@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import travelIllustration from "@/assets/travel-illustration.png";
 
 const HomeScreen = () => {
   const navigate = useNavigate();
@@ -32,11 +35,52 @@ const HomeScreen = () => {
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="book" className="text-center space-y-4">
-            <h2 className="text-xl font-semibold">Book Ride Tab</h2>
-            <Button onClick={() => navigate("/booking")}>
-              Start Booking
-            </Button>
+          <TabsContent value="book" className="space-y-6">
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+              {/* Form Section */}
+              <div className="flex-1 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentLocation" className="text-foreground font-medium">
+                      Current Location
+                    </Label>
+                    <Input
+                      id="currentLocation"
+                      placeholder="Enter your pickup location"
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="destination" className="text-foreground font-medium">
+                      Destination
+                    </Label>
+                    <Input
+                      id="destination"
+                      placeholder="Where to?"
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={() => navigate("/booking")}
+                  className="w-full h-12 text-base font-medium"
+                  size="lg"
+                >
+                  Start & See Price
+                </Button>
+              </div>
+              
+              {/* Image Section */}
+              <div className="flex-1 flex justify-center lg:justify-end">
+                <img 
+                  src={travelIllustration} 
+                  alt="Travel illustration" 
+                  className="w-full max-w-md h-auto object-contain"
+                />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="history" className="text-center space-y-4">
