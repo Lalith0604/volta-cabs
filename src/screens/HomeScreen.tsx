@@ -4,18 +4,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DestinationAutocomplete } from "@/components/ui/destination-autocomplete";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "@/contexts/LocationContext";
 import travelIllustration from "@/assets/travel-illustration.png";
+
+const MAPBOX_TOKEN = "pk.eyJ1IjoibGFsaXRoMDYwNCIsImEiOiJjbWRqeGV0ZHEwb3k2Mm1zNTJud2ZzN2cxIn0.UQDq7MJMhKskfLD3B7li6Q";
 
 const HomeScreen = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { currentLocation, destination, setCurrentLocation, setDestination } = useLocation();
   const [activeTab, setActiveTab] = useState("book");
-  const [currentLocation, setCurrentLocation] = useState("");
-  const [destination, setDestination] = useState("");
+  const [currentLocationDisplay, setCurrentLocationDisplay] = useState("");
+  const [destinationDisplay, setDestinationDisplay] = useState("");
   const [isLocationLoading, setIsLocationLoading] = useState(false);
 
-  const getCurrentLocation = () => {
+  // Reverse geocoding function
+  const reverseGeocode = async (longitude: number, latitude: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}`
+      );
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        return data.features[0].place_name;
+      }
+      return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    } catch (error) {
+      console.error('Reverse geocoding failed:', error);
+      return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    }
+  };
+
+  const getCurrentLocation = async () => {
     if (!navigator.geolocation) {
       toast({
         title: "Geolocation not supported",
@@ -28,15 +51,31 @@ const HomeScreen = () => {
     setIsLocationLoading(true);
     
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
-        // For demo purposes, showing coordinates. In production, use reverse geocoding service
-        setCurrentLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        
+        try {
+          const address = await reverseGeocode(longitude, latitude);
+          setCurrentLocationDisplay(address);
+          setCurrentLocation({
+            coordinates: [longitude, latitude],
+            address: address
+          });
+          
+          toast({
+            title: "Location found",
+            description: "Your current location has been detected.",
+          });
+        } catch (error) {
+          const fallbackAddress = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          setCurrentLocationDisplay(fallbackAddress);
+          setCurrentLocation({
+            coordinates: [longitude, latitude],
+            address: fallbackAddress
+          });
+        }
+        
         setIsLocationLoading(false);
-        toast({
-          title: "Location found",
-          description: "Your current location has been detected.",
-        });
       },
       (error) => {
         setIsLocationLoading(false);
@@ -66,6 +105,20 @@ const HomeScreen = () => {
         maximumAge: 300000, // 5 minutes
       }
     );
+  };
+
+  const handleDestinationSelect = (suggestion: any) => {
+    setDestinationDisplay(suggestion.place_name);
+    setDestination({
+      coordinates: suggestion.coordinates,
+      address: suggestion.place_name
+    });
+  };
+
+  const handleStartBooking = () => {
+    if (currentLocation && destination) {
+      navigate("/booking");
+    }
   };
 
   useEffect(() => {
@@ -108,48 +161,47 @@ const HomeScreen = () => {
                       Current Location
                     </Label>
                     <div className="relative">
-                      <Input
-                        id="currentLocation"
-                        placeholder="Detecting your location..."
-                        value={currentLocation}
-                        onChange={(e) => setCurrentLocation(e.target.value)}
-                        className="h-12 pr-10"
-                        disabled={isLocationLoading}
-                      />
-                      {isLocationLoading && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                        </div>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={getCurrentLocation}
-                      disabled={isLocationLoading}
-                      className="text-xs"
-                    >
-                      {isLocationLoading ? "Detecting..." : "Use Current Location"}
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="destination" className="text-foreground font-medium">
-                      Destination
-                    </Label>
                     <Input
-                      id="destination"
-                      placeholder="Where to?"
-                      value={destination}
-                      onChange={(e) => setDestination(e.target.value)}
-                      className="h-12"
+                      id="currentLocation"
+                      placeholder="Detecting your location..."
+                      value={currentLocationDisplay}
+                      className="h-12 pr-10"
+                      disabled={true}
+                      readOnly
                     />
+                    {isLocationLoading && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                      </div>
+                    )}
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={getCurrentLocation}
+                    disabled={isLocationLoading}
+                    className="text-xs"
+                  >
+                    {isLocationLoading ? "Detecting..." : "Use Current Location"}
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="destination" className="text-foreground font-medium">
+                    Destination
+                  </Label>
+                  <DestinationAutocomplete
+                    value={destinationDisplay}
+                    onChange={setDestinationDisplay}
+                    onSelect={handleDestinationSelect}
+                    placeholder="Where to?"
+                  />
+                </div>
                 </div>
                 
                 <Button 
-                  onClick={() => navigate("/booking")}
+                  onClick={handleStartBooking}
                   className="w-full h-12 text-base font-medium"
                   size="lg"
                   disabled={!currentLocation || !destination}
