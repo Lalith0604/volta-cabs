@@ -42,7 +42,7 @@ const HomeScreen = () => {
     if (!navigator.geolocation) {
       toast({
         title: "Geolocation not supported",
-        description: "Your browser doesn't support geolocation.",
+        description: "Your browser doesn't support geolocation. Please enter your location manually.",
         variant: "destructive",
       });
       return;
@@ -63,15 +63,21 @@ const HomeScreen = () => {
           });
           
           toast({
-            title: "Location found",
-            description: "Your current location has been detected.",
+            title: "Location detected",
+            description: "Your current location has been found successfully.",
           });
         } catch (error) {
+          console.error('Reverse geocoding failed:', error);
           const fallbackAddress = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
           setCurrentLocationDisplay(fallbackAddress);
           setCurrentLocation({
             coordinates: [longitude, latitude],
             address: fallbackAddress
+          });
+          
+          toast({
+            title: "Location found",
+            description: "Using coordinates as we couldn't resolve the address.",
           });
         }
         
@@ -80,29 +86,31 @@ const HomeScreen = () => {
       (error) => {
         setIsLocationLoading(false);
         let errorMessage = "Unable to retrieve your location.";
+        let errorTitle = "Location Error";
         
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = "Location access denied. Please enable location permissions.";
+            errorTitle = "Location Permission Denied";
+            errorMessage = "Please enable location permissions in your browser settings and try again.";
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = "Location information is unavailable.";
+            errorMessage = "Location information is unavailable. Please check your GPS settings.";
             break;
           case error.TIMEOUT:
-            errorMessage = "Location request timed out.";
+            errorMessage = "Location request timed out. Please try again.";
             break;
         }
         
         toast({
-          title: "Location Error",
+          title: errorTitle,
           description: errorMessage,
           variant: "destructive",
         });
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000, // 5 minutes
+        timeout: 15000, // Increased timeout
+        maximumAge: 60000, // Cache for 1 minute
       }
     );
   };
@@ -113,12 +121,33 @@ const HomeScreen = () => {
       coordinates: suggestion.coordinates,
       address: suggestion.place_name
     });
+    
+    toast({
+      title: "Destination selected",
+      description: `Selected: ${suggestion.place_name}`,
+    });
   };
 
   const handleStartBooking = () => {
-    if (currentLocation && destination) {
-      navigate("/booking");
+    if (!currentLocation) {
+      toast({
+        title: "Location Required",
+        description: "Please allow location access or enter your current location.",
+        variant: "destructive",
+      });
+      return;
     }
+    
+    if (!destination) {
+      toast({
+        title: "Destination Required", 
+        description: "Please select a destination to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    navigate("/booking");
   };
 
   useEffect(() => {
@@ -161,30 +190,30 @@ const HomeScreen = () => {
                       Current Location
                     </Label>
                     <div className="relative">
-                    <Input
-                      id="currentLocation"
-                      placeholder="Detecting your location..."
-                      value={currentLocationDisplay}
-                      className="h-12 pr-10"
-                      disabled={true}
-                      readOnly
-                    />
-                    {isLocationLoading && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={getCurrentLocation}
-                    disabled={isLocationLoading}
-                    className="text-xs"
-                  >
-                    {isLocationLoading ? "Detecting..." : "Use Current Location"}
-                  </Button>
+                      <Input
+                        id="currentLocation"
+                        placeholder={isLocationLoading ? "Detecting your location..." : "Location not detected"}
+                        value={currentLocationDisplay}
+                        className="h-12 pr-10 bg-muted/50"
+                        disabled={true}
+                        readOnly
+                      />
+                      {isLocationLoading && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={getCurrentLocation}
+                      disabled={isLocationLoading}
+                      className="text-xs w-full sm:w-auto"
+                    >
+                      {isLocationLoading ? "Detecting Location..." : "📍 Detect My Location"}
+                    </Button>
                 </div>
                 
                 <div className="space-y-2">
@@ -195,18 +224,21 @@ const HomeScreen = () => {
                     value={destinationDisplay}
                     onChange={setDestinationDisplay}
                     onSelect={handleDestinationSelect}
-                    placeholder="Where to?"
+                    placeholder="🔍 Search for destination..."
+                    className="h-12"
                   />
                 </div>
                 </div>
                 
-                <Button 
-                  onClick={handleStartBooking}
-                  className="w-full h-12 text-base font-medium"
-                  size="lg"
-                  disabled={!currentLocation || !destination}
-                >
-                  Start & See Price
+              <Button 
+                onClick={handleStartBooking}
+                className="w-full h-12 text-base font-medium"
+                size="lg"
+                disabled={!currentLocation || !destination || isLocationLoading}
+              >
+                {!currentLocation ? "🔍 Detecting Location..." : 
+                 !destination ? "📍 Select Destination" : 
+                 "🚗 Start & See Price"}
                 </Button>
               </div>
               
