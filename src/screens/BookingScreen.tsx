@@ -236,7 +236,14 @@ const BookingScreen = () => {
             
             {/* Request Button */}
             <Button
-              onClick={() => navigate("/ride-details")}
+              onClick={() => {
+                const selectedRideData = rideOptions.find(ride => ride.id === selectedRide);
+                navigate("/ride-details", { 
+                  state: { 
+                    rideDetails: selectedRideData 
+                  } 
+                });
+              }}
               className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold"
               disabled={!currentLocation || !destination}
             >
