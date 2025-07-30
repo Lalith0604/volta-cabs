@@ -3,14 +3,43 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Car, Bike, Truck, Zap, MapPin } from "lucide-react";
+import { Car, Bike, Truck, Zap, MapPin, User, Clock, Package } from "lucide-react";
 import { useLocation } from "@/contexts/LocationContext";
 
 const rideOptions = [
-  { id: "auto", name: "Auto", price: "₹60", icon: Truck },
-  { id: "cab", name: "Cab", price: "₹100", icon: Car },
-  { id: "bike", name: "Bike", price: "₹50", icon: Bike },
-  { id: "ev", name: "EV Car", price: "₹120", icon: Zap },
+  { 
+    id: "auto", 
+    name: "Auto", 
+    price: "₹81.84", 
+    icon: Truck, 
+    seats: 3, 
+    eta: "2 mins away - 10:56 AM",
+    tag: "Faster"
+  },
+  { 
+    id: "moto", 
+    name: "Moto", 
+    price: "₹59.51", 
+    icon: Bike, 
+    seats: 1, 
+    eta: "2 mins away - 10:56 AM"
+  },
+  { 
+    id: "uber-go", 
+    name: "Uber Go", 
+    price: "₹159.99", 
+    icon: Car, 
+    seats: 4, 
+    eta: "3 mins away - 10:59 AM"
+  },
+  { 
+    id: "courier", 
+    name: "Courier", 
+    price: "₹78.00", 
+    icon: Package, 
+    seats: null, 
+    eta: "2 mins away - 10:56 AM"
+  },
 ];
 
 const BookingScreen = () => {
@@ -126,48 +155,98 @@ const BookingScreen = () => {
           </div>
         )}
 
-        <h3 className="text-lg font-semibold text-foreground mb-4">Choose your ride</h3>
-        
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {rideOptions.map((option) => {
-            const Icon = option.icon;
-            return (
-              <button
-                key={option.id}
-                onClick={() => setSelectedRide(option.id)}
-                className={`flex-shrink-0 p-4 rounded-xl border-2 transition-all min-w-[120px] ${
-                  selectedRide === option.id
-                    ? "border-primary bg-primary/10"
-                    : "border-border bg-background"
-                }`}
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <Icon className={`w-8 h-8 ${
-                    selectedRide === option.id ? "text-primary" : "text-muted-foreground"
-                  }`} />
-                  <span className={`text-sm font-medium ${
-                    selectedRide === option.id ? "text-primary" : "text-foreground"
-                  }`}>
-                    {option.name}
-                  </span>
-                  <span className={`text-lg font-bold ${
-                    selectedRide === option.id ? "text-primary" : "text-foreground"
-                  }`}>
-                    {option.price}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+        {/* Choose a Ride Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-foreground">Choose a ride</h3>
+          
+          {/* Ride Options List */}
+          <div className="space-y-3">
+            {rideOptions.map((option) => {
+              const Icon = option.icon;
+              const selectedRideData = rideOptions.find(ride => ride.id === selectedRide);
+              
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => setSelectedRide(option.id)}
+                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    selectedRide === option.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-background hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    {/* Left side: Icon, Name, Details */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                        <Icon className={`w-6 h-6 ${
+                          selectedRide === option.id ? "text-primary" : "text-muted-foreground"
+                        }`} />
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`font-semibold ${
+                            selectedRide === option.id ? "text-primary" : "text-foreground"
+                          }`}>
+                            {option.name}
+                          </span>
+                          {option.tag && (
+                            <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                              {option.tag}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          {option.seats && (
+                            <div className="flex items-center gap-1">
+                              <User className="w-4 h-4" />
+                              <span>{option.seats}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            <span>{option.eta}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Right side: Price */}
+                    <div className="text-right">
+                      <span className={`text-lg font-bold ${
+                        selectedRide === option.id ? "text-primary" : "text-foreground"
+                      }`}>
+                        {option.price}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* Economy Section Label */}
+          <div className="pt-2">
+            <p className="text-sm text-muted-foreground mb-2">Economy</p>
+            <button className="text-primary text-sm font-medium hover:underline mb-4">
+              Add Payment Method
+            </button>
+          </div>
+          
+          {/* Request Button */}
+          <Button
+            onClick={() => navigate("/ride-details")}
+            className="w-full"
+            disabled={!currentLocation || !destination}
+          >
+            {currentLocation && destination 
+              ? `Request ${rideOptions.find(ride => ride.id === selectedRide)?.name || 'Ride'}` 
+              : "Location required"
+            }
+          </Button>
         </div>
-
-        <Button
-          onClick={() => navigate("/ride-details")}
-          className="w-full mt-4"
-          disabled={!currentLocation || !destination}
-        >
-          {currentLocation && destination ? "Continue to Ride Details" : "Location required"}
-        </Button>
       </div>
     </div>
   );
