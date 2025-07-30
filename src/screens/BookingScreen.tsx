@@ -107,9 +107,9 @@ const BookingScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-secondary flex flex-col">
-      {/* Map Container */}
-      <div className="flex-1 relative">
+    <div className="min-h-screen bg-[#F2F4F7] flex flex-col">
+      {/* Map Container - 60-70% of screen */}
+      <div className="h-[65vh] relative">
         <div ref={mapContainer} className="absolute inset-0" />
         
         {/* Back Button */}
@@ -122,23 +122,23 @@ const BookingScreen = () => {
         </Button>
       </div>
 
-      {/* Location Info & Ride Options */}
-      <div className="bg-background p-5 border-t border-border">
-        {/* Display current location and destination */}
+      {/* Bottom Section - Location Info & Ride Selection */}
+      <div className="flex-1 bg-background p-5 rounded-t-3xl -mt-6 relative z-10 shadow-lg">
+        {/* Location Info */}
         {currentLocation && destination ? (
           <div className="mb-6 space-y-3">
             <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
               <MapPin className="w-5 h-5 text-primary" />
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground">Pickup</p>
-                <p className="font-medium text-foreground">{currentLocation.address}</p>
+                <p className="font-medium text-[#1A1A1A]">{currentLocation.address}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-destructive/5 rounded-lg border border-destructive/20">
               <MapPin className="w-5 h-5 text-destructive" />
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground">Drop-off</p>
-                <p className="font-medium text-foreground">{destination.address}</p>
+                <p className="font-medium text-[#1A1A1A]">{destination.address}</p>
               </div>
             </div>
           </div>
@@ -157,13 +157,12 @@ const BookingScreen = () => {
 
         {/* Choose a Ride Section */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Choose a ride</h3>
+          <h3 className="text-xl font-semibold text-[#1A1A1A]">Choose a Ride</h3>
           
           {/* Ride Options List */}
           <div className="space-y-3">
             {rideOptions.map((option) => {
               const Icon = option.icon;
-              const selectedRideData = rideOptions.find(ride => ride.id === selectedRide);
               
               return (
                 <button
@@ -171,7 +170,7 @@ const BookingScreen = () => {
                   onClick={() => setSelectedRide(option.id)}
                   className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
                     selectedRide === option.id
-                      ? "border-primary bg-primary/5"
+                      ? "border-[#1E90FF] bg-[#1E90FF]/5"
                       : "border-border bg-background hover:bg-muted/50"
                   }`}
                 >
@@ -180,19 +179,19 @@ const BookingScreen = () => {
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
                         <Icon className={`w-6 h-6 ${
-                          selectedRide === option.id ? "text-primary" : "text-muted-foreground"
+                          selectedRide === option.id ? "text-[#1E90FF]" : "text-muted-foreground"
                         }`} />
                       </div>
                       
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`font-semibold ${
-                            selectedRide === option.id ? "text-primary" : "text-foreground"
+                            selectedRide === option.id ? "text-[#1E90FF]" : "text-[#1A1A1A]"
                           }`}>
                             {option.name}
                           </span>
                           {option.tag && (
-                            <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                            <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full font-medium">
                               {option.tag}
                             </span>
                           )}
@@ -216,7 +215,7 @@ const BookingScreen = () => {
                     {/* Right side: Price */}
                     <div className="text-right">
                       <span className={`text-lg font-bold ${
-                        selectedRide === option.id ? "text-primary" : "text-foreground"
+                        selectedRide === option.id ? "text-[#1E90FF]" : "text-[#1A1A1A]"
                       }`}>
                         {option.price}
                       </span>
@@ -227,25 +226,26 @@ const BookingScreen = () => {
             })}
           </div>
           
-          {/* Economy Section Label */}
-          <div className="pt-2">
-            <p className="text-sm text-muted-foreground mb-2">Economy</p>
-            <button className="text-primary text-sm font-medium hover:underline mb-4">
+          {/* Action Section */}
+          <div className="pt-4 border-t border-border">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Economy</p>
+            
+            <button className="text-[#1E90FF] text-sm font-medium hover:underline mb-4 block">
               Add Payment Method
             </button>
+            
+            {/* Request Button */}
+            <Button
+              onClick={() => navigate("/ride-details")}
+              className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold"
+              disabled={!currentLocation || !destination}
+            >
+              {currentLocation && destination 
+                ? `Request ${rideOptions.find(ride => ride.id === selectedRide)?.name || 'Ride'}` 
+                : "Location required"
+              }
+            </Button>
           </div>
-          
-          {/* Request Button */}
-          <Button
-            onClick={() => navigate("/ride-details")}
-            className="w-full"
-            disabled={!currentLocation || !destination}
-          >
-            {currentLocation && destination 
-              ? `Request ${rideOptions.find(ride => ride.id === selectedRide)?.name || 'Ride'}` 
-              : "Location required"
-            }
-          </Button>
         </div>
       </div>
     </div>
