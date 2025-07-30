@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Car, Bike, Truck, Zap } from "lucide-react";
+import { Car, Bike, Truck, Zap, MapPin } from "lucide-react";
+import { useLocation } from "@/contexts/LocationContext";
 
 const rideOptions = [
   { id: "auto", name: "Auto", price: "₹60", icon: Truck },
@@ -14,65 +15,65 @@ const rideOptions = [
 
 const BookingScreen = () => {
   const navigate = useNavigate();
+  const { currentLocation, destination } = useLocation();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [selectedRide, setSelectedRide] = useState("auto");
-  const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
-  const [destinationLocation, setDestinationLocation] = useState<[number, number] | null>(null);
   const currentMarker = useRef<mapboxgl.Marker | null>(null);
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
 
   useEffect(() => {
-    // Get user's current location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
-          setCurrentLocation(coords);
-          initializeMap(coords);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          // Default to a location if geolocation fails
-          const defaultCoords: [number, number] = [77.5946, 12.9716]; // Bangalore
-          setCurrentLocation(defaultCoords);
-          initializeMap(defaultCoords);
-        }
-      );
+    if (currentLocation && destination) {
+      initializeMap();
     }
-  }, []);
+  }, [currentLocation, destination]);
 
-  const initializeMap = (coords: [number, number]) => {
-    if (!mapContainer.current) return;
+  const initializeMap = () => {
+    if (!mapContainer.current || !currentLocation || !destination) return;
 
     mapboxgl.accessToken = "pk.eyJ1IjoibGFsaXRoMDYwNCIsImEiOiJjbWRqeGV0ZHEwb3k2Mm1zNTJud2ZzN2cxIn0.UQDq7MJMhKskfLD3B7li6Q";
+
+    // Calculate center point between current location and destination
+    const centerLng = (currentLocation.coordinates[0] + destination.coordinates[0]) / 2;
+    const centerLat = (currentLocation.coordinates[1] + destination.coordinates[1]) / 2;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: coords,
-      zoom: 14,
+      center: [centerLng, centerLat],
+      zoom: 12,
     });
 
-    // Add current location marker
-    currentMarker.current = new mapboxgl.Marker({ color: "#1E90FF" })
-      .setLngLat(coords)
-      .addTo(map.current);
-
-    // Add click listener for destination selection
-    map.current.on("click", (e) => {
-      const destination: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-      setDestinationLocation(destination);
-
-      // Remove existing destination marker
-      if (destinationMarker.current) {
-        destinationMarker.current.remove();
-      }
-
-      // Add new destination marker
-      destinationMarker.current = new mapboxgl.Marker({ color: "#FF6B6B" })
-        .setLngLat(destination)
+    map.current.on('load', () => {
+      // Add pickup marker with popup
+      const pickupPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+        '<div style="padding: 8px; font-weight: bold; color: #1E90FF;">📍 Pickup</div>'
+      );
+      
+      currentMarker.current = new mapboxgl.Marker({ color: "#1E90FF" })
+        .setLngLat(currentLocation.coordinates)
+        .setPopup(pickupPopup)
         .addTo(map.current!);
+
+      // Add drop-off marker with popup
+      const dropoffPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+        '<div style="padding: 8px; font-weight: bold; color: #FF6B6B;">🎯 Drop-off</div>'
+      );
+      
+      destinationMarker.current = new mapboxgl.Marker({ color: "#FF6B6B" })
+        .setLngLat(destination.coordinates)
+        .setPopup(dropoffPopup)
+        .addTo(map.current!);
+
+      // Fit map to show both markers
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend(currentLocation.coordinates);
+      bounds.extend(destination.coordinates);
+      
+      map.current!.fitBounds(bounds, {
+        padding: 50,
+        maxZoom: 15
+      });
     });
   };
 
@@ -92,8 +93,39 @@ const BookingScreen = () => {
         </Button>
       </div>
 
-      {/* Ride Options */}
+      {/* Location Info & Ride Options */}
       <div className="bg-background p-5 border-t border-border">
+        {/* Display current location and destination */}
+        {currentLocation && destination ? (
+          <div className="mb-6 space-y-3">
+            <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+              <MapPin className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Pickup</p>
+                <p className="font-medium text-foreground">{currentLocation.address}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-destructive/5 rounded-lg border border-destructive/20">
+              <MapPin className="w-5 h-5 text-destructive" />
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Drop-off</p>
+                <p className="font-medium text-foreground">{destination.address}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 p-4 bg-muted rounded-lg text-center">
+            <p className="text-muted-foreground">Location info not available. Please go back and select locations.</p>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/home")} 
+              className="mt-2"
+            >
+              Go Back
+            </Button>
+          </div>
+        )}
+
         <h3 className="text-lg font-semibold text-foreground mb-4">Choose your ride</h3>
         
         <div className="flex gap-3 overflow-x-auto pb-2">
@@ -132,9 +164,9 @@ const BookingScreen = () => {
         <Button
           onClick={() => navigate("/ride-details")}
           className="w-full mt-4"
-          disabled={!destinationLocation}
+          disabled={!currentLocation || !destination}
         >
-          {destinationLocation ? "Continue to Ride Details" : "Select destination on map"}
+          {currentLocation && destination ? "Continue to Ride Details" : "Location required"}
         </Button>
       </div>
     </div>
