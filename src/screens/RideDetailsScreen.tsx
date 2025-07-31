@@ -156,10 +156,10 @@ const RideDetailsScreen = () => {
       {/* Bottom Action Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
         <Button
-          onClick={() => navigate("/payment", { state: { rideDetails } })}
+          onClick={() => navigate("/live-ride", { state: { rideDetails } })}
           className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold"
         >
-          Confirm & Pay {rideDetails.price}
+          Start Ride
         </Button>
       </div>
 
