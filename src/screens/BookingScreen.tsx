@@ -57,6 +57,55 @@ const BookingScreen = () => {
     }
   }, [currentLocation, destination]);
 
+  const fetchAndDrawRoute = async () => {
+    if (!map.current || !currentLocation || !destination) return;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${currentLocation.coordinates[0]},${currentLocation.coordinates[1]};${destination.coordinates[0]},${destination.coordinates[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`
+      );
+      
+      const data = await response.json();
+      
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        
+        // Add route source
+        if (map.current.getSource('route')) {
+          map.current.removeLayer('route');
+          map.current.removeSource('route');
+        }
+        
+        map.current.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route.geometry
+          }
+        });
+        
+        // Add route layer with styling
+        map.current.addLayer({
+          id: 'route',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#1E90FF',
+            'line-width': 4,
+            'line-opacity': 0.8
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
+    }
+  };
+
   const initializeMap = () => {
     if (!mapContainer.current || !currentLocation || !destination) return;
 
@@ -76,23 +125,26 @@ const BookingScreen = () => {
     map.current.on('load', () => {
       // Add pickup marker with popup
       const pickupPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-        '<div style="padding: 8px; font-weight: bold; color: #1E90FF;">📍 Pickup</div>'
+        '<div style="padding: 8px; font-weight: bold; color: #22c55e;">📍 Pickup</div>'
       );
       
-      currentMarker.current = new mapboxgl.Marker({ color: "#1E90FF" })
+      currentMarker.current = new mapboxgl.Marker({ color: "#22c55e" })
         .setLngLat(currentLocation.coordinates)
         .setPopup(pickupPopup)
         .addTo(map.current!);
 
       // Add drop-off marker with popup
       const dropoffPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-        '<div style="padding: 8px; font-weight: bold; color: #FF6B6B;">🎯 Drop-off</div>'
+        '<div style="padding: 8px; font-weight: bold; color: #ef4444;">🎯 Drop-off</div>'
       );
       
-      destinationMarker.current = new mapboxgl.Marker({ color: "#FF6B6B" })
+      destinationMarker.current = new mapboxgl.Marker({ color: "#ef4444" })
         .setLngLat(destination.coordinates)
         .setPopup(dropoffPopup)
         .addTo(map.current!);
+
+      // Fetch and draw route
+      fetchAndDrawRoute();
 
       // Fit map to show both markers
       const bounds = new mapboxgl.LngLatBounds();
@@ -100,7 +152,7 @@ const BookingScreen = () => {
       bounds.extend(destination.coordinates);
       
       map.current!.fitBounds(bounds, {
-        padding: 50,
+        padding: 80,
         maxZoom: 15
       });
     });
