@@ -36,40 +36,54 @@ const RideRequestOverlay = ({
   useEffect(() => {
     if (!isVisible) return;
 
+    // Phase 0: Finding driver (0-1.5s)
     const timer1 = setTimeout(() => setAnimationPhase(1), 1500);
+    
+    // Phase 1: Driver found (1.5-3s)
     const timer2 = setTimeout(() => setAnimationPhase(2), 3000);
-    const timer3 = setTimeout(() => {
-      navigate("/ride-details", { 
+    
+    // Phase 2: Driver arriving (3-7s) - Vehicle moves to pickup
+    const timer3 = setTimeout(() => setAnimationPhase(3), 7000);
+    
+    // Phase 3: Driver arrived, start ride (7-8s)
+    const timer4 = setTimeout(() => {
+      navigate("/live-ride", { 
         state: { 
           rideDetails: selectedRide,
           currentLocation,
           destination
         } 
       });
-    }, 5000);
+    }, 8000);
 
-    // Vehicle animation
+    // Vehicle animation - moves toward pickup point
     const vehicleAnimation = setInterval(() => {
       setVehiclePosition(prev => {
-        if (prev >= 100) return 0;
-        return prev + 2;
+        // Vehicle starts moving in phase 2 (arriving)
+        if (animationPhase >= 2) {
+          if (prev >= 85) return 85; // Stop at pickup point
+          return prev + 1.5;
+        }
+        return prev;
       });
-    }, 100);
+    }, 50);
 
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
       clearTimeout(timer3);
+      clearTimeout(timer4);
       clearInterval(vehicleAnimation);
     };
-  }, [isVisible, navigate, selectedRide, currentLocation, destination]);
+  }, [isVisible, navigate, selectedRide, currentLocation, destination, animationPhase]);
 
   if (!isVisible) return null;
 
   const getAnimatedText = () => {
     if (animationPhase === 0) return "Finding a nearby driver";
     if (animationPhase === 1) return "Driver found! Getting ready";
-    return "Your ride is on the way";
+    if (animationPhase === 2) return "Driver is arriving";
+    return "Driver has arrived! Starting ride";
   };
 
   const RideIcon = selectedRide.icon;
@@ -126,7 +140,7 @@ const RideRequestOverlay = ({
             <div className="text-left">
               <p className="font-medium text-foreground">{selectedRide.name}</p>
               <p className="text-sm text-muted-foreground">
-                Arriving in 2-3 mins
+                {animationPhase >= 3 ? "Ready to start!" : animationPhase >= 2 ? "Arriving now..." : "Arriving in 2-3 mins"}
               </p>
             </div>
             <div className="ml-auto">
@@ -139,13 +153,14 @@ const RideRequestOverlay = ({
         <div className="mb-6">
           <div className="flex justify-between text-xs text-muted-foreground mb-2">
             <span>Searching</span>
-            <span>Confirmed</span>
+            <span>Found</span>
             <span>Arriving</span>
+            <span>Starting</span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div 
               className="h-full bg-primary rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${Math.min((animationPhase + 1) * 33.33, 100)}%` }}
+              style={{ width: `${Math.min((animationPhase + 1) * 25, 100)}%` }}
             />
           </div>
         </div>

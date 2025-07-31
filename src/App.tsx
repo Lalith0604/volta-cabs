@@ -10,6 +10,8 @@ import SignupScreen from "./screens/SignupScreen";
 import HomeScreen from "./screens/HomeScreen";
 import BookingScreen from "./screens/BookingScreen";
 import RideDetailsScreen from "./screens/RideDetailsScreen";
+import LiveRideScreen from "./screens/LiveRideScreen";
+import RideCompletedScreen from "./screens/RideCompletedScreen";
 import PaymentScreen from "./screens/PaymentScreen";
 import RideHistoryScreen from "./screens/RideHistoryScreen";
 import ProfileScreen from "./screens/ProfileScreen";
@@ -32,6 +34,8 @@ const App = () => (
             <Route path="/home" element={<HomeScreen />} />
             <Route path="/booking" element={<BookingScreen />} />
             <Route path="/ride-details" element={<RideDetailsScreen />} />
+            <Route path="/live-ride" element={<LiveRideScreen />} />
+            <Route path="/ride-completed" element={<RideCompletedScreen />} />
             <Route path="/payment" element={<PaymentScreen />} />
             <Route path="/ride-history" element={<RideHistoryScreen />} />
             <Route path="/profile" element={<ProfileScreen />} />

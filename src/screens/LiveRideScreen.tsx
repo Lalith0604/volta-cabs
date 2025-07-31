@@ -41,7 +41,7 @@ const LiveRideScreen = () => {
   }, [currentLocation, destination]);
 
   useEffect(() => {
-    // Start countdown timer
+    // Start countdown timer immediately when component loads
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -235,17 +235,17 @@ const LiveRideScreen = () => {
                 <span className="text-2xl">{rideIcons[rideDetails.id as keyof typeof rideIcons] || '🚗'}</span>
                 <div>
                   <h3 className="font-semibold text-[#1A1A1A]">{rideDetails.name}</h3>
-                  <p className="text-sm text-muted-foreground">On the way</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Arriving in</p>
-                <p className="text-xl font-bold text-[#1E90FF]">{formatTime(timeLeft)}</p>
+                <p className="text-sm text-muted-foreground">En route to destination</p>
               </div>
             </div>
-            
-            {/* Progress bar */}
-            <div className="w-full bg-muted rounded-full h-2">
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Reaching destination in</p>
+              <p className="text-xl font-bold text-[#1E90FF]">{formatTime(timeLeft)}</p>
+            </div>
+          </div>
+          
+          {/* Progress bar */}
+          <div className="w-full bg-muted rounded-full h-2">
               <div 
                 className="bg-[#1E90FF] h-2 rounded-full transition-all duration-1000"
                 style={{ width: `${currentProgress}%` }}
