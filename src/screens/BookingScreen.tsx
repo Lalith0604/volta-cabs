@@ -5,6 +5,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Car, Bike, Truck, Zap, MapPin, User, Clock, Package } from "lucide-react";
 import { useLocation } from "@/contexts/LocationContext";
+import RideRequestOverlay from "@/components/RideRequestOverlay";
 
 const rideOptions = [
   { 
@@ -48,6 +49,7 @@ const BookingScreen = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [selectedRide, setSelectedRide] = useState("auto");
+  const [showRequestOverlay, setShowRequestOverlay] = useState(false);
   const currentMarker = useRef<mapboxgl.Marker | null>(null);
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
 
@@ -288,14 +290,7 @@ const BookingScreen = () => {
             
             {/* Request Button */}
             <Button
-              onClick={() => {
-                const selectedRideData = rideOptions.find(ride => ride.id === selectedRide);
-                navigate("/ride-details", { 
-                  state: { 
-                    rideDetails: selectedRideData 
-                  } 
-                });
-              }}
+              onClick={() => setShowRequestOverlay(true)}
               className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold"
               disabled={!currentLocation || !destination}
             >
@@ -307,6 +302,15 @@ const BookingScreen = () => {
           </div>
         </div>
       </div>
+
+      {/* Ride Request Overlay */}
+      <RideRequestOverlay
+        isVisible={showRequestOverlay}
+        onCancel={() => setShowRequestOverlay(false)}
+        selectedRide={rideOptions.find(ride => ride.id === selectedRide) || rideOptions[0]}
+        currentLocation={currentLocation}
+        destination={destination}
+      />
     </div>
   );
 };
