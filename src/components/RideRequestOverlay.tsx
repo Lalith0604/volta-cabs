@@ -36,27 +36,22 @@ const RideRequestOverlay = ({
   useEffect(() => {
     if (!isVisible) return;
 
-    // Phase 0: Finding driver (0-1.5s)
-    const timer1 = setTimeout(() => setAnimationPhase(1), 1500);
+    // Phase 0: Finding driver (0-5s)
+    const timer1 = setTimeout(() => setAnimationPhase(1), 5000);
     
-    // Phase 1: Driver found (1.5-3s)
-    const timer2 = setTimeout(() => setAnimationPhase(2), 3000);
+    // Phase 1: Driver found (5-5.5s)
+    const timer2 = setTimeout(() => setAnimationPhase(2), 5500);
     
-    // Phase 2: Driver arriving (3-7s) - Vehicle moves to pickup
-    const timer3 = setTimeout(() => setAnimationPhase(3), 7000);
-    
-    // Phase 3: Driver arrived, show start ride button (after 7s)
-    const timer4 = setTimeout(() => {
-      setAnimationPhase(3);
-    }, 7000);
+    // Phase 2: Driver arriving (5.5-15s) - Vehicle moves to pickup
+    const timer3 = setTimeout(() => setAnimationPhase(3), 15000);
 
-    // Vehicle animation - moves toward pickup point
+    // Vehicle animation - moves toward pickup point over 9.5 seconds
     const vehicleAnimation = setInterval(() => {
       setVehiclePosition(prev => {
-        // Vehicle starts moving in phase 2 (arriving)
+        // Vehicle starts moving in phase 2 (arriving) - 9.5 seconds to complete
         if (animationPhase >= 2) {
           if (prev >= 85) return 85; // Stop at pickup point
-          return prev + 1.5;
+          return prev + 0.9; // Adjusted speed for 9.5 second duration
         }
         return prev;
       });
@@ -66,7 +61,6 @@ const RideRequestOverlay = ({
       clearTimeout(timer1);
       clearTimeout(timer2);
       clearTimeout(timer3);
-      clearTimeout(timer4);
       clearInterval(vehicleAnimation);
     };
   }, [isVisible, navigate, selectedRide, currentLocation, destination, animationPhase]);
@@ -144,7 +138,7 @@ const RideRequestOverlay = ({
             <div className="text-left">
               <p className="font-medium text-foreground">{selectedRide.name}</p>
               <p className="text-sm text-muted-foreground">
-                {animationPhase >= 3 ? "Ready to start!" : animationPhase >= 2 ? "Arriving now..." : "Arriving in 2-3 mins"}
+                {animationPhase >= 3 ? "Ready to start!" : animationPhase >= 2 ? "Arriving now..." : "Arriving in 5-8 mins"}
               </p>
             </div>
             <div className="ml-auto">
