@@ -45,16 +45,10 @@ const RideRequestOverlay = ({
     // Phase 2: Driver arriving (3-7s) - Vehicle moves to pickup
     const timer3 = setTimeout(() => setAnimationPhase(3), 7000);
     
-    // Phase 3: Driver arrived, start ride (7-8s)
+    // Phase 3: Driver arrived, show start ride button (after 7s)
     const timer4 = setTimeout(() => {
-      navigate("/live-ride", { 
-        state: { 
-          rideDetails: selectedRide,
-          currentLocation,
-          destination
-        } 
-      });
-    }, 8000);
+      setAnimationPhase(3);
+    }, 7000);
 
     // Vehicle animation - moves toward pickup point
     const vehicleAnimation = setInterval(() => {
@@ -83,7 +77,17 @@ const RideRequestOverlay = ({
     if (animationPhase === 0) return "Finding a nearby driver";
     if (animationPhase === 1) return "Driver found! Getting ready";
     if (animationPhase === 2) return "Driver is arriving";
-    return "Driver has arrived! Starting ride";
+    return "Driver has arrived!";
+  };
+
+  const handleStartRide = () => {
+    navigate("/payment", { 
+      state: { 
+        rideDetails: selectedRide,
+        currentLocation,
+        destination
+      } 
+    });
   };
 
   const RideIcon = selectedRide.icon;
@@ -165,14 +169,32 @@ const RideRequestOverlay = ({
           </div>
         </div>
 
-        {/* Cancel button */}
-        <Button
-          variant="outline"
-          onClick={onCancel}
-          className="w-full"
-        >
-          Cancel Request
-        </Button>
+        {/* Action buttons */}
+        {animationPhase === 3 ? (
+          <div className="space-y-3">
+            <Button
+              onClick={handleStartRide}
+              className="w-full bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white font-bold"
+            >
+              Start Ride
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              className="w-full"
+            >
+              Cancel Request
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            className="w-full"
+          >
+            Cancel Request
+          </Button>
+        )}
       </div>
     </div>
   );
