@@ -24,9 +24,6 @@ const LiveRideScreen = () => {
   const animationRef = useRef<NodeJS.Timeout | null>(null);
   const routeCoordinates = useRef<[number, number][]>([]);
   
-  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes in seconds
-  const [currentProgress, setCurrentProgress] = useState(0);
-
   // Get ride details from navigation state
   const rideDetails = routerLocation.state?.rideDetails || {
     id: "auto",
@@ -40,29 +37,6 @@ const LiveRideScreen = () => {
     }
   }, [currentLocation, destination]);
 
-  useEffect(() => {
-    // Start countdown timer immediately when component loads
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          // Navigate to ride completed screen after animation
-          navigate("/ride-completed", { state: { rideDetails } });
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [navigate, rideDetails]);
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
   const fetchAndDrawRoute = async () => {
     if (!map.current || !currentLocation || !destination) return;
 
@@ -75,7 +49,6 @@ const LiveRideScreen = () => {
       
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
-        routeCoordinates.current = route.geometry.coordinates;
         
         // Add route source
         if (map.current.getSource('route')) {
@@ -107,67 +80,10 @@ const LiveRideScreen = () => {
             'line-opacity': 0.8
           }
         });
-
-        // Start vehicle animation
-        startVehicleAnimation();
       }
     } catch (error) {
       console.error('Error fetching route:', error);
     }
-  };
-
-  const startVehicleAnimation = () => {
-    if (!map.current || routeCoordinates.current.length === 0) return;
-
-    const totalSteps = routeCoordinates.current.length;
-    let currentStep = 0;
-    const animationDuration = 120000; // 2 minutes
-    const stepDuration = animationDuration / totalSteps;
-
-    const animateVehicle = () => {
-      if (currentStep >= totalSteps - 1) {
-        return; // Animation complete
-      }
-
-      const currentCoord = routeCoordinates.current[currentStep];
-      const nextCoord = routeCoordinates.current[currentStep + 1];
-
-      // Update vehicle position
-      if (vehicleMarker.current) {
-        vehicleMarker.current.setLngLat(currentCoord);
-      }
-
-      // Calculate bearing for vehicle rotation
-      if (nextCoord) {
-        const bearing = calculateBearing(currentCoord, nextCoord);
-        // Update vehicle marker rotation if needed
-      }
-
-      // Update progress
-      setCurrentProgress((currentStep / (totalSteps - 1)) * 100);
-
-      // Center map on vehicle
-      map.current?.easeTo({
-        center: currentCoord,
-        duration: stepDuration * 0.8
-      });
-
-      currentStep++;
-      animationRef.current = setTimeout(animateVehicle, stepDuration);
-    };
-
-    animateVehicle();
-  };
-
-  const calculateBearing = (from: [number, number], to: [number, number]) => {
-    const [fromLng, fromLat] = from;
-    const [toLng, toLat] = to;
-    
-    const dLng = toLng - fromLng;
-    const y = Math.sin(dLng) * Math.cos(toLat);
-    const x = Math.cos(fromLat) * Math.sin(toLat) - Math.sin(fromLat) * Math.cos(toLat) * Math.cos(dLng);
-    
-    return (Math.atan2(y, x) * 180) / Math.PI;
   };
 
   const initializeMap = () => {
@@ -230,30 +146,18 @@ const LiveRideScreen = () => {
         {/* Top overlay with ride info */}
         <div className="absolute top-4 left-4 right-4 z-10">
           <div className="bg-background rounded-xl p-4 shadow-lg border border-border">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{rideIcons[rideDetails.id as keyof typeof rideIcons] || '🚗'}</span>
                 <div>
                   <h3 className="font-semibold text-[#1A1A1A]">{rideDetails.name}</h3>
-                <p className="text-sm text-muted-foreground">En route to destination</p>
+                  <p className="text-sm text-muted-foreground">Driver has arrived</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-primary">{rideDetails.price}</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Reaching destination in</p>
-              <p className="text-xl font-bold text-[#1E90FF]">{formatTime(timeLeft)}</p>
-            </div>
-          </div>
-          
-          {/* Progress bar */}
-          <div className="w-full bg-muted rounded-full h-2">
-              <div 
-                className="bg-[#1E90FF] h-2 rounded-full transition-all duration-1000"
-                style={{ width: `${currentProgress}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {Math.round(currentProgress)}% complete
-            </p>
           </div>
         </div>
 
