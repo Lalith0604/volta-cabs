@@ -290,12 +290,21 @@ const BookingScreen = () => {
             
             {/* Request Button */}
             <Button
-              onClick={() => setShowRequestOverlay(true)}
+              onClick={() => {
+                const selectedRideDetails = rideOptions.find(ride => ride.id === selectedRide) || rideOptions[0];
+                navigate("/live-ride", {
+                  state: {
+                    rideDetails: selectedRideDetails,
+                    currentLocation,
+                    destination
+                  }
+                });
+              }}
               className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold"
               disabled={!currentLocation || !destination}
             >
               {currentLocation && destination 
-                ? `Request ${rideOptions.find(ride => ride.id === selectedRide)?.name || 'Ride'}` 
+                ? `Confirm Ride` 
                 : "Location required"
               }
             </Button>

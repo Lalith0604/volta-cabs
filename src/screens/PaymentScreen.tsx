@@ -23,10 +23,27 @@ const PaymentScreen = () => {
 
   const handlePaymentSelect = (method: string) => {
     setShowConfirmation(true);
+    
+    // Auto-navigate to ride completed after 2 seconds
+    setTimeout(() => {
+      navigate("/ride-completed", {
+        state: {
+          rideDetails,
+          currentLocation: location.state?.currentLocation,
+          destination: location.state?.destination
+        }
+      });
+    }, 2000);
   };
 
   const handleConfirmationDone = () => {
-    navigate("/home");
+    navigate("/ride-completed", {
+      state: {
+        rideDetails,
+        currentLocation: location.state?.currentLocation,
+        destination: location.state?.destination
+      }
+    });
   };
 
   if (showConfirmation) {

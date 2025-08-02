@@ -13,6 +13,9 @@ const RideCompletedScreen = () => {
     name: "Auto",
     price: "₹81.84",
   };
+  
+  const currentLocation = routerLocation.state?.currentLocation;
+  const destination = routerLocation.state?.destination;
 
   return (
     <div className="min-h-screen bg-[#F2F4F7] p-4 flex flex-col">
@@ -25,10 +28,10 @@ const RideCompletedScreen = () => {
         {/* Success Message */}
         <div className="text-center">
           <h1 className="text-2xl font-bold text-[#1A1A1A] mb-2">
-            Ride Completed!
+            Thank you for riding with us!
           </h1>
           <p className="text-muted-foreground">
-            You have arrived at your destination safely.
+            Your ride has been completed successfully.
           </p>
         </div>
 
@@ -38,19 +41,29 @@ const RideCompletedScreen = () => {
             <h2 className="text-lg font-semibold text-[#1A1A1A] mb-4">Trip Summary</h2>
             
             <div className="space-y-3">
+              {currentLocation && (
+                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                  <MapPin className="w-4 h-4 text-green-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-green-600 font-medium">Pickup</p>
+                    <p className="text-sm text-gray-700">{currentLocation.address}</p>
+                  </div>
+                </div>
+              )}
+              
+              {destination && (
+                <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                  <MapPin className="w-4 h-4 text-red-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-red-600 font-medium">Drop-off</p>
+                    <p className="text-sm text-gray-700">{destination.address}</p>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-center justify-between">
                 <span className="text-[#1A1A1A]">Ride Type</span>
                 <span className="font-medium text-[#1A1A1A]">{rideDetails.name}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-[#1A1A1A]">Duration</span>
-                <span className="font-medium text-[#1A1A1A]">2 min</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-[#1A1A1A]">Distance</span>
-                <span className="font-medium text-[#1A1A1A]">6.2 km</span>
               </div>
               
               <div className="border-t border-border pt-3">
@@ -91,7 +104,7 @@ const RideCompletedScreen = () => {
           onClick={() => navigate("/home")}
           className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold"
         >
-          Book Another Ride
+          Back to Home
         </Button>
         
         <Button

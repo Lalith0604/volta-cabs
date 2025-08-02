@@ -30,6 +30,18 @@ const LiveRideScreen = () => {
     name: "Auto",
     price: "₹81.84",
   };
+  
+  // States for driver animation and start ride
+  const [showStartRide, setShowStartRide] = useState(false);
+  
+  useEffect(() => {
+    // Show "Start Ride" button after 3 seconds (simulating driver arrival)
+    const timer = setTimeout(() => {
+      setShowStartRide(true);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (currentLocation && destination) {
@@ -178,13 +190,27 @@ const LiveRideScreen = () => {
       </div>
 
       {/* Bottom action */}
-      <div className="p-4 bg-background border-t border-border">
+      <div className="p-4 bg-background border-t border-border space-y-3">
+        {showStartRide && (
+          <Button
+            onClick={() => navigate("/payment", {
+              state: {
+                rideDetails,
+                currentLocation: routerLocation.state?.currentLocation || currentLocation,
+                destination: routerLocation.state?.destination || destination
+              }
+            })}
+            className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold animate-fade-in"
+          >
+            Start Ride
+          </Button>
+        )}
         <Button
           variant="outline"
-          onClick={() => navigate("/ride-details")}
+          onClick={() => navigate("/booking")}
           className="w-full"
         >
-          Back to Ride Details
+          Back to Booking
         </Button>
       </div>
     </div>
