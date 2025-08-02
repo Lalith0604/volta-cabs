@@ -61,6 +61,56 @@ const BookingScreen = () => {
     }
   }, [currentLocation, destination]);
 
+  const fetchAndDrawRoute = async () => {
+    if (!map.current || !currentLocation || !destination) return;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${currentLocation.coordinates[0]},${currentLocation.coordinates[1]};${destination.coordinates[0]},${destination.coordinates[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`
+      );
+      
+      const data = await response.json();
+      
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        
+        // Remove existing route if present
+        if (map.current.getSource('route')) {
+          map.current.removeLayer('route');
+          map.current.removeSource('route');
+        }
+        
+        // Add route source
+        map.current.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route.geometry
+          }
+        });
+        
+        // Add route layer with blue styling and rounded edges
+        map.current.addLayer({
+          id: 'route',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#1E90FF',
+            'line-width': 4,
+            'line-opacity': 0.8
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
+    }
+
+  };
 
   const initializeMap = () => {
     if (!mapContainer.current || !currentLocation || !destination) return;
@@ -98,6 +148,9 @@ const BookingScreen = () => {
         .setLngLat(destination.coordinates)
         .setPopup(dropoffPopup)
         .addTo(map.current!);
+
+      // Draw route between pickup and destination
+      fetchAndDrawRoute();
 
 
       // Fit map to show both markers
