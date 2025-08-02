@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Car, Bike, Truck, Zap, MapPin, User, Clock, Package } from "lucide-react";
@@ -50,6 +51,7 @@ const BookingScreen = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [selectedRide, setSelectedRide] = useState("auto");
   const [showRequestOverlay, setShowRequestOverlay] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const currentMarker = useRef<mapboxgl.Marker | null>(null);
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
 
@@ -291,22 +293,37 @@ const BookingScreen = () => {
             {/* Request Button */}
             <Button
               onClick={() => {
+                if (isNavigating) return;
+                
+                setIsNavigating(true);
                 const selectedRideDetails = rideOptions.find(ride => ride.id === selectedRide) || rideOptions[0];
-                navigate("/live-ride", {
-                  state: {
-                    rideDetails: selectedRideDetails,
-                    currentLocation,
-                    destination
-                  }
-                });
+                
+                // Add loading feedback for 0.5s before navigation
+                setTimeout(() => {
+                  navigate("/live-ride", {
+                    state: {
+                      rideDetails: selectedRideDetails,
+                      currentLocation,
+                      destination
+                    }
+                  });
+                }, 500);
               }}
-              className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold"
-              disabled={!currentLocation || !destination}
+              className={`w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold transition-all duration-300 ${
+                isNavigating ? 'opacity-75 scale-95' : 'opacity-100 scale-100'
+              }`}
+              disabled={!currentLocation || !destination || isNavigating}
             >
-              {currentLocation && destination 
-                ? `Confirm Ride` 
-                : "Location required"
-              }
+              {isNavigating ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Confirming...</span>
+                </div>
+              ) : currentLocation && destination ? (
+                "Confirm Ride"
+              ) : (
+                "Location required"
+              )}
             </Button>
           </div>
         </div>
