@@ -303,10 +303,20 @@ const BookingScreen = () => {
                 
                 const selectedRideDetails = rideOptions.find(ride => ride.id === selectedRide) || rideOptions[0];
                 
+                // Create serializable ride data (remove React components)
+                const serializableRideDetails = {
+                  id: selectedRideDetails.id,
+                  name: selectedRideDetails.name,
+                  price: selectedRideDetails.price,
+                  seats: selectedRideDetails.seats,
+                  eta: selectedRideDetails.eta,
+                  tag: selectedRideDetails.tag
+                };
+                
                 // Navigate immediately to live-ride screen
                 navigate("/live-ride", {
                   state: {
-                    rideDetails: selectedRideDetails,
+                    rideDetails: serializableRideDetails,
                     currentLocation,
                     destination
                   }
