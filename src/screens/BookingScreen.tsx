@@ -296,37 +296,27 @@ const BookingScreen = () => {
             {/* Request Button */}
             <Button
               onClick={() => {
-                if (isNavigating) return;
+                // Validate locations are available
+                if (!currentLocation || !destination) {
+                  alert("Please select both pickup and destination locations.");
+                  return;
+                }
                 
-                setIsNavigating(true);
                 const selectedRideDetails = rideOptions.find(ride => ride.id === selectedRide) || rideOptions[0];
                 
-                // Add loading feedback for 0.5s before navigation
-                setTimeout(() => {
-                  navigate("/live-ride", {
-                    state: {
-                      rideDetails: selectedRideDetails,
-                      currentLocation,
-                      destination
-                    }
-                  });
-                }, 500);
+                // Navigate immediately to live-ride screen
+                navigate("/live-ride", {
+                  state: {
+                    rideDetails: selectedRideDetails,
+                    currentLocation,
+                    destination
+                  }
+                });
               }}
-              className={`w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold transition-all duration-300 ${
-                isNavigating ? 'opacity-75 scale-95' : 'opacity-100 scale-100'
-              }`}
-              disabled={!currentLocation || !destination || isNavigating}
+              className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold transition-all duration-300"
+              disabled={!currentLocation || !destination}
             >
-              {isNavigating ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Confirming...</span>
-                </div>
-              ) : currentLocation && destination ? (
-                "Confirm Ride"
-              ) : (
-                "Location required"
-              )}
+              {currentLocation && destination ? "Confirm Ride" : "Location required"}
             </Button>
           </div>
         </div>
