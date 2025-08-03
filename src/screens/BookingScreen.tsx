@@ -315,7 +315,7 @@ const BookingScreen = () => {
               className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white rounded-xl font-semibold transition-all duration-300"
               disabled={!currentLocation || !destination}
             >
-              {currentLocation && destination ? "Confirm Ride" : "Location required"}
+              {currentLocation && destination ? "Book Ride" : "Location required"}
             </Button>
           </div>
         </div>
