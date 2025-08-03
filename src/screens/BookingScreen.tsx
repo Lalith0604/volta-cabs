@@ -51,7 +51,6 @@ const BookingScreen = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [selectedRide, setSelectedRide] = useState("auto");
   const [showRequestOverlay, setShowRequestOverlay] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
   const currentMarker = useRef<mapboxgl.Marker | null>(null);
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
 

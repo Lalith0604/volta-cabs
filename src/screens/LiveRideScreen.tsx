@@ -17,6 +17,10 @@ const LiveRideScreen = () => {
   const navigate = useNavigate();
   const routerLocation = useRouterLocation();
   const { currentLocation, destination } = useLocation();
+
+  // Test console log to confirm navigation worked
+  console.log("✅ Successfully navigated to LiveRideScreen!");
+  console.log("Ride data received:", routerLocation.state);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const vehicleMarker = useRef<mapboxgl.Marker | null>(null);
