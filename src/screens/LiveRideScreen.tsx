@@ -37,15 +37,62 @@ const LiveRideScreen = () => {
   
   // States for driver animation and start ride
   const [showStartRide, setShowStartRide] = useState(false);
+  const [driverStatus, setDriverStatus] = useState("Driver on the way");
+  const [currentVehiclePosition, setCurrentVehiclePosition] = useState<[number, number] | null>(null);
   
+  // Generate simulated driver starting position (about 1000m away)
+  const getSimulatedDriverPosition = (pickupLocation: [number, number]): [number, number] => {
+    const offsetLat = 0.009; // approximately 1000m in latitude
+    const offsetLng = 0.012; // approximately 1000m in longitude
+    return [
+      pickupLocation[0] + offsetLng,
+      pickupLocation[1] + offsetLat
+    ];
+  };
+  
+  // Interpolate between two points for smooth animation
+  const interpolatePosition = (start: [number, number], end: [number, number], progress: number): [number, number] => {
+    const lng = start[0] + (end[0] - start[0]) * progress;
+    const lat = start[1] + (end[1] - start[1]) * progress;
+    return [lng, lat];
+  };
+  
+  // Start vehicle animation when component loads
   useEffect(() => {
-    // Show "Start Ride" button after 3 seconds (simulating driver arrival)
-    const timer = setTimeout(() => {
-      setShowStartRide(true);
-    }, 3000);
+    if (!currentLocation) return;
     
-    return () => clearTimeout(timer);
-  }, []);
+    const driverStartPosition = getSimulatedDriverPosition(currentLocation.coordinates);
+    setCurrentVehiclePosition(driverStartPosition);
+    
+    // Animation duration: 18 seconds
+    const animationDuration = 18000;
+    const updateInterval = 250; // Update every 250ms
+    const totalSteps = animationDuration / updateInterval;
+    let currentStep = 0;
+    
+    const animationTimer = setInterval(() => {
+      currentStep++;
+      const progress = currentStep / totalSteps;
+      
+      if (progress >= 1) {
+        // Animation complete - driver arrived
+        setCurrentVehiclePosition(currentLocation.coordinates);
+        setDriverStatus("Driver has arrived");
+        setShowStartRide(true);
+        clearInterval(animationTimer);
+      } else {
+        // Update vehicle position
+        const newPosition = interpolatePosition(
+          driverStartPosition,
+          currentLocation.coordinates,
+          progress
+        );
+        setCurrentVehiclePosition(newPosition);
+      }
+    }, updateInterval);
+    
+    return () => clearInterval(animationTimer);
+  }, [currentLocation]);
 
   useEffect(() => {
     if (currentLocation && destination) {
@@ -121,8 +168,10 @@ const LiveRideScreen = () => {
       vehicleEl.style.fontSize = '24px';
       vehicleEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))';
       
+      // Start vehicle at simulated driver position
+      const startPosition = currentVehiclePosition || getSimulatedDriverPosition(currentLocation.coordinates);
       vehicleMarker.current = new mapboxgl.Marker({ element: vehicleEl })
-        .setLngLat(currentLocation.coordinates)
+        .setLngLat(startPosition)
         .addTo(map.current!);
 
       // Add destination marker
@@ -144,6 +193,13 @@ const LiveRideScreen = () => {
       fetchAndDrawRoute();
     });
   };
+
+  // Update vehicle marker position when currentVehiclePosition changes
+  useEffect(() => {
+    if (vehicleMarker.current && currentVehiclePosition) {
+      vehicleMarker.current.setLngLat(currentVehiclePosition);
+    }
+  }, [currentVehiclePosition]);
 
   useEffect(() => {
     return () => {
@@ -167,7 +223,7 @@ const LiveRideScreen = () => {
                 <span className="text-2xl">{rideIcons[rideDetails.id as keyof typeof rideIcons] || '🚗'}</span>
                 <div>
                   <h3 className="font-semibold text-[#1A1A1A]">{rideDetails.name}</h3>
-                  <p className="text-sm text-muted-foreground">Driver has arrived</p>
+                  <p className="text-sm text-muted-foreground">{driverStatus}</p>
                 </div>
               </div>
               <div className="text-right">
