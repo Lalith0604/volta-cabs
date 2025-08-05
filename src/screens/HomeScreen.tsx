@@ -160,7 +160,7 @@ const HomeScreen = () => {
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">GoSwift</h1>
+          <h1 className="text-2xl font-bold text-foreground">VOLTA CABS</h1>
           <Button 
             variant="outline" 
             size="sm"
