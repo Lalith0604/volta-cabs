@@ -251,6 +251,21 @@ const LiveRideScreen = () => {
         .setLngLat(startPosition)
         .addTo(map.current!);
 
+      // Always show pickup point marker
+      const pickupEl = document.createElement('div');
+      pickupEl.innerHTML = '📍';
+      pickupEl.style.fontSize = '20px';
+      pickupEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))';
+      
+      const pickupPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+        '<div style="padding: 8px; font-weight: bold; color: #22c55e;">📍 Pickup Point</div>'
+      );
+      
+      new mapboxgl.Marker({ element: pickupEl })
+        .setLngLat(currentLocation.coordinates)
+        .setPopup(pickupPopup)
+        .addTo(map.current!);
+
       // Only show destination marker in stage 2
       if (rideStage === 'pickup-to-destination') {
         const destinationEl = document.createElement('div');
@@ -270,6 +285,7 @@ const LiveRideScreen = () => {
 
       // Fetch and draw appropriate route based on stage
       if (rideStage === 'driver-to-pickup') {
+        // Draw route from vehicle current position to pickup
         fetchAndDrawDriverToPickupRoute();
       } else {
         fetchAndDrawPickupToDestinationRoute();
@@ -283,6 +299,13 @@ const LiveRideScreen = () => {
       vehicleMarker.current.setLngLat(currentVehiclePosition);
     }
   }, [currentVehiclePosition]);
+
+  // Draw initial route when vehicle position is set and map is ready
+  useEffect(() => {
+    if (map.current && currentVehiclePosition && currentLocation && rideStage === 'driver-to-pickup') {
+      fetchAndDrawDriverToPickupRoute();
+    }
+  }, [currentVehiclePosition, currentLocation, rideStage]);
 
   useEffect(() => {
     return () => {
