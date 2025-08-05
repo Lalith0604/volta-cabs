@@ -17,7 +17,7 @@ const SplashScreen = () => {
     <div className="min-h-screen flex items-center justify-center bg-primary">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-primary-foreground mb-4">
-          GoSwift
+          VOLTA CABS
         </h1>
         <p className="text-primary-foreground/80">Loading...</p>
       </div>
