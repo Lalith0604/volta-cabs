@@ -26,7 +26,7 @@ const LiveRideScreen = () => {
   const vehicleMarker = useRef<mapboxgl.Marker | null>(null);
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
-  const routeCoordinates = useRef<[number, number][]>([]);
+  
   
   // Get ride details from navigation state
   const rideDetails = routerLocation.state?.rideDetails || {
@@ -40,6 +40,7 @@ const LiveRideScreen = () => {
   const [driverStatus, setDriverStatus] = useState("Driver on the way");
   const [currentVehiclePosition, setCurrentVehiclePosition] = useState<[number, number] | null>(null);
   const [rideStage, setRideStage] = useState<'driver-to-pickup' | 'pickup-to-destination'>('driver-to-pickup');
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
   
   // Generate simulated driver starting position (about 1000m away)
   const getSimulatedDriverPosition = (pickupLocation: [number, number]): [number, number] => {
@@ -51,19 +52,33 @@ const LiveRideScreen = () => {
     ];
   };
   
-  // Interpolate between two points for smooth animation
-  const interpolatePosition = (start: [number, number], end: [number, number], progress: number): [number, number] => {
-    const lng = start[0] + (end[0] - start[0]) * progress;
-    const lat = start[1] + (end[1] - start[1]) * progress;
-    return [lng, lat];
-  };
-  
-  // Start vehicle animation when component loads
-  useEffect(() => {
-    if (!currentLocation) return;
+  // Get position along route path based on progress
+  const getPositionAlongRoute = (coordinates: [number, number][], progress: number): [number, number] => {
+    if (coordinates.length === 0) return [0, 0];
+    if (progress <= 0) return coordinates[0];
+    if (progress >= 1) return coordinates[coordinates.length - 1];
     
-    const driverStartPosition = getSimulatedDriverPosition(currentLocation.coordinates);
-    setCurrentVehiclePosition(driverStartPosition);
+    const totalSegments = coordinates.length - 1;
+    const segmentProgress = progress * totalSegments;
+    const segmentIndex = Math.floor(segmentProgress);
+    const segmentFraction = segmentProgress - segmentIndex;
+    
+    if (segmentIndex >= coordinates.length - 1) {
+      return coordinates[coordinates.length - 1];
+    }
+    
+    const start = coordinates[segmentIndex];
+    const end = coordinates[segmentIndex + 1];
+    
+    return [
+      start[0] + (end[0] - start[0]) * segmentFraction,
+      start[1] + (end[1] - start[1]) * segmentFraction
+    ];
+  };
+
+  // Start vehicle animation when route coordinates are available
+  useEffect(() => {
+    if (!currentLocation || routeCoordinates.length === 0) return;
     
     // Animation duration: 18 seconds
     const animationDuration = 18000;
@@ -83,17 +98,20 @@ const LiveRideScreen = () => {
         setShowStartRide(true);
         clearInterval(animationTimer);
       } else {
-        // Update vehicle position
-        const newPosition = interpolatePosition(
-          driverStartPosition,
-          currentLocation.coordinates,
-          progress
-        );
+        // Update vehicle position along the route
+        const newPosition = getPositionAlongRoute(routeCoordinates, progress);
         setCurrentVehiclePosition(newPosition);
       }
     }, updateInterval);
     
     return () => clearInterval(animationTimer);
+  }, [routeCoordinates, currentLocation]);
+
+  // Initialize vehicle position when component loads
+  useEffect(() => {
+    if (!currentLocation) return;
+    const driverStartPosition = getSimulatedDriverPosition(currentLocation.coordinates);
+    setCurrentVehiclePosition(driverStartPosition);
   }, [currentLocation]);
 
   useEffect(() => {
@@ -140,6 +158,10 @@ const LiveRideScreen = () => {
       
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
+        
+        // Store route coordinates for animation
+        const coordinates: [number, number][] = route.geometry.coordinates;
+        setRouteCoordinates(coordinates);
         
         // Add route source
         if (map.current.getSource('route')) {
