@@ -39,6 +39,7 @@ const LiveRideScreen = () => {
   const [showStartRide, setShowStartRide] = useState(false);
   const [driverStatus, setDriverStatus] = useState("Driver on the way");
   const [currentVehiclePosition, setCurrentVehiclePosition] = useState<[number, number] | null>(null);
+  const [rideStage, setRideStage] = useState<'driver-to-pickup' | 'pickup-to-destination'>('driver-to-pickup');
   
   // Generate simulated driver starting position (about 1000m away)
   const getSimulatedDriverPosition = (pickupLocation: [number, number]): [number, number] => {
@@ -75,9 +76,10 @@ const LiveRideScreen = () => {
       const progress = currentStep / totalSteps;
       
       if (progress >= 1) {
-        // Animation complete - driver arrived
+        // Animation complete - driver arrived at pickup
         setCurrentVehiclePosition(currentLocation.coordinates);
         setDriverStatus("Driver has arrived");
+        setRideStage('pickup-to-destination');
         setShowStartRide(true);
         clearInterval(animationTimer);
       } else {
@@ -98,9 +100,84 @@ const LiveRideScreen = () => {
     if (currentLocation && destination) {
       initializeMap();
     }
-  }, [currentLocation, destination]);
+  }, [currentLocation, destination, rideStage]);
 
-  const fetchAndDrawRoute = async () => {
+  // Effect to update map when stage changes
+  useEffect(() => {
+    if (map.current && rideStage === 'pickup-to-destination') {
+      // Add destination marker when stage changes
+      if (destination && !destinationMarker.current) {
+        const destinationEl = document.createElement('div');
+        destinationEl.innerHTML = '🎯';
+        destinationEl.style.fontSize = '20px';
+        destinationEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))';
+        
+        const destinationPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+          '<div style="padding: 8px; font-weight: bold; color: #ef4444;">🎯 Destination</div>'
+        );
+        
+        destinationMarker.current = new mapboxgl.Marker({ element: destinationEl })
+          .setLngLat(destination.coordinates)
+          .setPopup(destinationPopup)
+          .addTo(map.current!);
+      }
+      
+      // Update route to show pickup to destination
+      fetchAndDrawPickupToDestinationRoute();
+    }
+  }, [rideStage, destination]);
+
+  const fetchAndDrawDriverToPickupRoute = async () => {
+    if (!map.current || !currentLocation || !currentVehiclePosition) return;
+
+    try {
+      const driverPosition = currentVehiclePosition || getSimulatedDriverPosition(currentLocation.coordinates);
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${driverPosition[0]},${driverPosition[1]};${currentLocation.coordinates[0]},${currentLocation.coordinates[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`
+      );
+      
+      const data = await response.json();
+      
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        
+        // Add route source
+        if (map.current.getSource('route')) {
+          map.current.removeLayer('route');
+          map.current.removeSource('route');
+        }
+        
+        map.current.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route.geometry
+          }
+        });
+        
+        // Add route layer (black for driver to pickup)
+        map.current.addLayer({
+          id: 'route',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#000000',
+            'line-width': 4,
+            'line-opacity': 0.8
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching driver to pickup route:', error);
+    }
+  };
+
+  const fetchAndDrawPickupToDestinationRoute = async () => {
     if (!map.current || !currentLocation || !destination) return;
 
     try {
@@ -128,7 +205,7 @@ const LiveRideScreen = () => {
           }
         });
         
-        // Add route layer
+        // Add route layer (blue for pickup to destination)
         map.current.addLayer({
           id: 'route',
           type: 'line',
@@ -145,7 +222,7 @@ const LiveRideScreen = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching route:', error);
+      console.error('Error fetching pickup to destination route:', error);
     }
   };
 
@@ -174,23 +251,29 @@ const LiveRideScreen = () => {
         .setLngLat(startPosition)
         .addTo(map.current!);
 
-      // Add destination marker
-      const destinationEl = document.createElement('div');
-      destinationEl.innerHTML = '🎯';
-      destinationEl.style.fontSize = '20px';
-      destinationEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))';
-      
-      const destinationPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-        '<div style="padding: 8px; font-weight: bold; color: #ef4444;">🎯 Destination</div>'
-      );
-      
-      destinationMarker.current = new mapboxgl.Marker({ element: destinationEl })
-        .setLngLat(destination.coordinates)
-        .setPopup(destinationPopup)
-        .addTo(map.current!);
+      // Only show destination marker in stage 2
+      if (rideStage === 'pickup-to-destination') {
+        const destinationEl = document.createElement('div');
+        destinationEl.innerHTML = '🎯';
+        destinationEl.style.fontSize = '20px';
+        destinationEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))';
+        
+        const destinationPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+          '<div style="padding: 8px; font-weight: bold; color: #ef4444;">🎯 Destination</div>'
+        );
+        
+        destinationMarker.current = new mapboxgl.Marker({ element: destinationEl })
+          .setLngLat(destination.coordinates)
+          .setPopup(destinationPopup)
+          .addTo(map.current!);
+      }
 
-      // Fetch and draw route
-      fetchAndDrawRoute();
+      // Fetch and draw appropriate route based on stage
+      if (rideStage === 'driver-to-pickup') {
+        fetchAndDrawDriverToPickupRoute();
+      } else {
+        fetchAndDrawPickupToDestinationRoute();
+      }
     });
   };
 
