@@ -53,28 +53,20 @@ const LiveRideScreen = () => {
     ];
   };
   
-  // Get position along route path based on progress
-  const getPositionAlongRoute = (coordinates: [number, number][], progress: number): [number, number] => {
-    if (coordinates.length === 0) return [0, 0];
-    if (progress <= 0) return coordinates[0];
-    if (progress >= 1) return coordinates[coordinates.length - 1];
+  // Calculate bearing between two coordinates for vehicle rotation
+  const calculateBearing = (start: [number, number], end: [number, number]): number => {
+    const [startLng, startLat] = start;
+    const [endLng, endLat] = end;
     
-    const totalSegments = coordinates.length - 1;
-    const segmentProgress = progress * totalSegments;
-    const segmentIndex = Math.floor(segmentProgress);
-    const segmentFraction = segmentProgress - segmentIndex;
+    const dLng = (endLng - startLng) * Math.PI / 180;
+    const lat1 = startLat * Math.PI / 180;
+    const lat2 = endLat * Math.PI / 180;
     
-    if (segmentIndex >= coordinates.length - 1) {
-      return coordinates[coordinates.length - 1];
-    }
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
     
-    const start = coordinates[segmentIndex];
-    const end = coordinates[segmentIndex + 1];
-    
-    return [
-      start[0] + (end[0] - start[0]) * segmentFraction,
-      start[1] + (end[1] - start[1]) * segmentFraction
-    ];
+    const bearing = Math.atan2(y, x) * 180 / Math.PI;
+    return (bearing + 360) % 360; // Normalize to 0-360
   };
 
   // Start vehicle animation when route coordinates are available  
@@ -84,22 +76,19 @@ const LiveRideScreen = () => {
       return;
     }
     
-    console.log("🚗 Starting smooth vehicle animation with", routeCoordinates.length, "route coordinates");
+    console.log("🚗 Starting step-by-step animation with", routeCoordinates.length, "route coordinates");
     setAnimationStarted(true);
     
-    // Smooth animation settings
-    const animationDuration = 15000; // 15 seconds for smooth experience
-    const updateInterval = 50; // 50ms for smooth 20fps animation
-    const totalSteps = animationDuration / updateInterval;
-    let currentStep = 0;
+    // Animation settings - 50 seconds total, step through each coordinate
+    const totalDuration = 50000; // 50 seconds as requested
+    const totalCoordinates = routeCoordinates.length;
+    const stepInterval = totalDuration / totalCoordinates; // Time per coordinate
+    let currentIndex = 0;
     
-    console.log(`⚙️ Smooth animation: ${animationDuration}ms total, ${updateInterval}ms interval, ${totalSteps} steps`);
+    console.log(`⚙️ Step-by-step animation: ${totalDuration}ms total, ${stepInterval.toFixed(0)}ms per step, ${totalCoordinates} coordinates`);
     
     const animationTimer = setInterval(() => {
-      currentStep++;
-      const progress = Math.min(currentStep / totalSteps, 1); // Ensure progress never exceeds 1
-      
-      if (progress >= 1) {
+      if (currentIndex >= totalCoordinates - 1) {
         // Animation complete - driver arrived at pickup
         console.log("✅ Animation complete - driver arrived at pickup");
         setCurrentVehiclePosition(currentLocation.coordinates);
@@ -109,17 +98,33 @@ const LiveRideScreen = () => {
         setAnimationStarted(false);
         clearInterval(animationTimer);
         animationRef.current = null;
-      } else {
-        // Smooth position update along the route
-        const newPosition = getPositionAlongRoute(routeCoordinates, progress);
-        setCurrentVehiclePosition(newPosition);
-        
-        // Log progress every 5%
-        if (currentStep % Math.floor(totalSteps / 20) === 0) {
-          console.log(`🎯 Progress: ${(progress * 100).toFixed(0)}%`);
+        return;
+      }
+      
+      // Get current and next coordinates for bearing calculation
+      const currentCoord = routeCoordinates[currentIndex];
+      const nextCoord = routeCoordinates[currentIndex + 1];
+      
+      // Calculate bearing for vehicle rotation
+      if (nextCoord && vehicleMarker.current) {
+        const bearing = calculateBearing(currentCoord, nextCoord);
+        const vehicleEl = vehicleMarker.current.getElement();
+        if (vehicleEl) {
+          vehicleEl.style.transform = `rotate(${bearing}deg)`;
         }
       }
-    }, updateInterval);
+      
+      // Update vehicle position to current coordinate
+      setCurrentVehiclePosition(currentCoord);
+      
+      // Log progress every 10% of coordinates
+      if (currentIndex % Math.floor(totalCoordinates / 10) === 0) {
+        const progressPercent = ((currentIndex / totalCoordinates) * 100).toFixed(0);
+        console.log(`🎯 Coordinate ${currentIndex}/${totalCoordinates} (${progressPercent}%)`);
+      }
+      
+      currentIndex++;
+    }, stepInterval);
     
     // Store animation ref for cleanup
     animationRef.current = animationTimer;
