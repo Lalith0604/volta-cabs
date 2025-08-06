@@ -69,77 +69,60 @@ const LiveRideScreen = () => {
     return (bearing + 360) % 360; // Normalize to 0-360
   };
 
-  // Start vehicle animation when route coordinates are available  
-  useEffect(() => {
-    // Prevent multiple animations running
-    if (animationStarted || !currentLocation || routeCoordinates.length === 0) {
-      return;
-    }
-    
-    console.log("🚗 Starting step-by-step animation with", routeCoordinates.length, "route coordinates");
-    setAnimationStarted(true);
-    
-    // Animation settings - 50 seconds total, step through each coordinate
-    const totalDuration = 50000; // 50 seconds as requested
-    const totalCoordinates = routeCoordinates.length;
-    const stepInterval = totalDuration / totalCoordinates; // Time per coordinate
+  // Smoothly animate marker between coordinates using requestAnimationFrame
+  const animateMarkerSmoothly = (
+    coordinates: [number, number][],
+    onArrive: () => void
+  ) => {
+    if (!vehicleMarker.current || coordinates.length < 2) return;
+    let frame: number;
     let currentIndex = 0;
-    
-    console.log(`⚙️ Step-by-step animation: ${totalDuration}ms total, ${stepInterval.toFixed(0)}ms per step, ${totalCoordinates} coordinates`);
-    
-    const animationTimer = setInterval(() => {
-      if (currentIndex >= totalCoordinates - 1) {
-        // Animation complete - driver arrived at pickup
-        console.log("✅ Animation complete - driver arrived at pickup");
-        setCurrentVehiclePosition(currentLocation.coordinates);
-        setDriverStatus("Driver has arrived");
-        setRideStage('pickup-to-destination');
-        setShowStartRide(true);
-        setAnimationStarted(false);
-        clearInterval(animationTimer);
-        animationRef.current = null;
+    let progress = 0;
+    const duration = 50000; // 50 seconds
+    const totalSegments = coordinates.length - 1;
+    const segmentDuration = duration / totalSegments;
+    let startTime: number | null = null;
+
+    function lerp(a: number, b: number, t: number) {
+      return a + (b - a) * t;
+    }
+
+    function animate(ts: number) {
+      if (!startTime) startTime = ts;
+      const elapsed = ts - startTime;
+      currentIndex = Math.floor(elapsed / segmentDuration);
+      progress = (elapsed % segmentDuration) / segmentDuration;
+
+      if (currentIndex >= totalSegments) {
+        // Arrived at destination
+        vehicleMarker.current!.setLngLat(coordinates[coordinates.length - 1]);
+        onArrive();
         return;
       }
-      
-      // Get current and next coordinates for bearing calculation
-      const currentCoord = routeCoordinates[currentIndex];
-      const nextCoord = routeCoordinates[currentIndex + 1];
-      
-      // Calculate bearing for vehicle rotation
-      if (nextCoord && vehicleMarker.current) {
-        const bearing = calculateBearing(currentCoord, nextCoord);
-        const vehicleEl = vehicleMarker.current.getElement();
-        if (vehicleEl) {
-          vehicleEl.style.transform = `rotate(${bearing}deg)`;
-        }
+
+      const [lng1, lat1] = coordinates[currentIndex];
+      const [lng2, lat2] = coordinates[currentIndex + 1];
+      const lng = lerp(lng1, lng2, progress);
+      const lat = lerp(lat1, lat2, progress);
+      vehicleMarker.current!.setLngLat([lng, lat]);
+
+      // Optionally, rotate marker
+      const bearing = calculateBearing([lng1, lat1], [lng2, lat2]);
+      const vehicleEl = vehicleMarker.current!.getElement();
+      if (vehicleEl) {
+        vehicleEl.style.transform = `rotate(${bearing}deg)`;
       }
-      
-      // Update vehicle position to current coordinate
-      setCurrentVehiclePosition(currentCoord);
-      
-      // Log progress every 10% of coordinates
-      if (currentIndex % Math.floor(totalCoordinates / 10) === 0) {
-        const progressPercent = ((currentIndex / totalCoordinates) * 100).toFixed(0);
-        console.log(`🎯 Coordinate ${currentIndex}/${totalCoordinates} (${progressPercent}%)`);
-      }
-      
-      currentIndex++;
-    }, stepInterval);
-    
-    // Store animation ref for cleanup
-    animationRef.current = animationTimer;
-    
+
+      frame = requestAnimationFrame(animate);
+    }
+
+    frame = requestAnimationFrame(animate);
+
+    // Cleanup function
     return () => {
-      if (animationTimer) {
-        clearInterval(animationTimer);
-      }
-      if (animationRef.current) {
-        clearInterval(animationRef.current);
-        animationRef.current = null;
-      }
-      setAnimationStarted(false);
+      if (frame) cancelAnimationFrame(frame);
     };
-  }, [routeCoordinates, currentLocation, animationStarted]);
+  };
 
   // Initialize vehicle position when component loads
   useEffect(() => {
@@ -356,12 +339,24 @@ const LiveRideScreen = () => {
     }
   }, [currentVehiclePosition]);
 
-  // Draw initial route when vehicle position is set and map is ready
+  // Replace useEffect for animation with new logic
   useEffect(() => {
-    if (map.current && currentVehiclePosition && currentLocation && rideStage === 'driver-to-pickup') {
-      fetchAndDrawDriverToPickupRoute();
+    if (animationStarted || !currentLocation || routeCoordinates.length === 0) {
+      return;
     }
-  }, [currentVehiclePosition, currentLocation, rideStage]);
+    setAnimationStarted(true);
+    let cleanup: (() => void) | undefined;
+    cleanup = animateMarkerSmoothly(routeCoordinates, () => {
+      setDriverStatus("Driver has arrived");
+      setRideStage('pickup-to-destination');
+      setShowStartRide(true);
+      setAnimationStarted(false);
+    });
+    return () => {
+      if (cleanup) cleanup();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeCoordinates, currentLocation, animationStarted]);
 
   useEffect(() => {
     return () => {
