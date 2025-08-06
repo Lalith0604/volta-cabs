@@ -41,6 +41,7 @@ const LiveRideScreen = () => {
   const [currentVehiclePosition, setCurrentVehiclePosition] = useState<[number, number] | null>(null);
   const [rideStage, setRideStage] = useState<'driver-to-pickup' | 'pickup-to-destination'>('driver-to-pickup');
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
+  const [animationStarted, setAnimationStarted] = useState(false);
   
   // Generate simulated driver starting position (about 1000m away)
   const getSimulatedDriverPosition = (pickupLocation: [number, number]): [number, number] => {
@@ -76,58 +77,47 @@ const LiveRideScreen = () => {
     ];
   };
 
-  // Start vehicle animation when route coordinates are available
+  // Start vehicle animation when route coordinates are available  
   useEffect(() => {
-    if (!currentLocation || routeCoordinates.length === 0) {
-      console.log("❌ Animation not starting:", { 
-        hasCurrentLocation: !!currentLocation, 
-        routeCoordinatesLength: routeCoordinates.length 
-      });
+    // Prevent multiple animations running
+    if (animationStarted || !currentLocation || routeCoordinates.length === 0) {
       return;
     }
     
-    console.log("🚗 Starting vehicle animation with", routeCoordinates.length, "route coordinates");
-    console.log("📊 Route coordinates:", routeCoordinates.map((coord, i) => `${i}: [${coord[0].toFixed(6)}, ${coord[1].toFixed(6)}]`));
+    console.log("🚗 Starting smooth vehicle animation with", routeCoordinates.length, "route coordinates");
+    setAnimationStarted(true);
     
-    // Animation duration: 50 seconds for smooth movement
-    const animationDuration = 50000;
-    const totalRoutePoints = routeCoordinates.length;
-    
-    // Calculate update interval based on route complexity
-    const updateInterval = Math.max(50, Math.min(200, animationDuration / (totalRoutePoints * 10))); // 50-200ms range
+    // Smooth animation settings
+    const animationDuration = 15000; // 15 seconds for smooth experience
+    const updateInterval = 50; // 50ms for smooth 20fps animation
     const totalSteps = animationDuration / updateInterval;
     let currentStep = 0;
     
-    console.log(`⚙️ Animation config: ${animationDuration}ms duration, ${updateInterval}ms interval, ${totalSteps} total steps`);
+    console.log(`⚙️ Smooth animation: ${animationDuration}ms total, ${updateInterval}ms interval, ${totalSteps} steps`);
     
     const animationTimer = setInterval(() => {
       currentStep++;
-      const progress = currentStep / totalSteps;
-      
-      if (currentStep % 20 === 0 || progress >= 1) { // Log every 20 steps or at completion
-        console.log(`🎯 Animation progress: ${(progress * 100).toFixed(1)}% (step ${currentStep}/${totalSteps})`);
-      }
+      const progress = Math.min(currentStep / totalSteps, 1); // Ensure progress never exceeds 1
       
       if (progress >= 1) {
         // Animation complete - driver arrived at pickup
         console.log("✅ Animation complete - driver arrived at pickup");
-        console.log("📍 Final position set to pickup point:", currentLocation.coordinates);
         setCurrentVehiclePosition(currentLocation.coordinates);
         setDriverStatus("Driver has arrived");
         setRideStage('pickup-to-destination');
         setShowStartRide(true);
+        setAnimationStarted(false);
         clearInterval(animationTimer);
+        animationRef.current = null;
       } else {
-        // Update vehicle position along the route with smooth interpolation
+        // Smooth position update along the route
         const newPosition = getPositionAlongRoute(routeCoordinates, progress);
-        
-        // Enhanced logging for debugging turns
-        const routeIndex = Math.floor(progress * (routeCoordinates.length - 1));
-        if (currentStep % 40 === 0) { // Log position details every 40 steps
-          console.log(`📍 Vehicle at route point ${routeIndex}/${routeCoordinates.length - 1}: [${newPosition[0].toFixed(6)}, ${newPosition[1].toFixed(6)}]`);
-        }
-        
         setCurrentVehiclePosition(newPosition);
+        
+        // Log progress every 5%
+        if (currentStep % Math.floor(totalSteps / 20) === 0) {
+          console.log(`🎯 Progress: ${(progress * 100).toFixed(0)}%`);
+        }
       }
     }, updateInterval);
     
@@ -135,14 +125,16 @@ const LiveRideScreen = () => {
     animationRef.current = animationTimer;
     
     return () => {
-      console.log("🛑 Cleaning up animation timer");
-      clearInterval(animationTimer);
+      if (animationTimer) {
+        clearInterval(animationTimer);
+      }
       if (animationRef.current) {
         clearInterval(animationRef.current);
         animationRef.current = null;
       }
+      setAnimationStarted(false);
     };
-  }, [routeCoordinates, currentLocation]);
+  }, [routeCoordinates, currentLocation, animationStarted]);
 
   // Initialize vehicle position when component loads
   useEffect(() => {
