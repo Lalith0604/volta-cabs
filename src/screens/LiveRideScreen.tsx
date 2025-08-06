@@ -78,7 +78,15 @@ const LiveRideScreen = () => {
 
   // Start vehicle animation when route coordinates are available
   useEffect(() => {
-    if (!currentLocation || routeCoordinates.length === 0) return;
+    if (!currentLocation || routeCoordinates.length === 0) {
+      console.log("❌ Animation not starting:", { 
+        hasCurrentLocation: !!currentLocation, 
+        routeCoordinatesLength: routeCoordinates.length 
+      });
+      return;
+    }
+    
+    console.log("🚗 Starting vehicle animation with", routeCoordinates.length, "route coordinates");
     
     // Animation duration: 18 seconds
     const animationDuration = 18000;
@@ -90,8 +98,11 @@ const LiveRideScreen = () => {
       currentStep++;
       const progress = currentStep / totalSteps;
       
+      console.log(`🎯 Animation progress: ${(progress * 100).toFixed(1)}% (step ${currentStep}/${totalSteps})`);
+      
       if (progress >= 1) {
         // Animation complete - driver arrived at pickup
+        console.log("✅ Animation complete - driver arrived at pickup");
         setCurrentVehiclePosition(currentLocation.coordinates);
         setDriverStatus("Driver has arrived");
         setRideStage('pickup-to-destination');
@@ -100,11 +111,22 @@ const LiveRideScreen = () => {
       } else {
         // Update vehicle position along the route
         const newPosition = getPositionAlongRoute(routeCoordinates, progress);
+        console.log(`📍 Vehicle position: [${newPosition[0].toFixed(6)}, ${newPosition[1].toFixed(6)}]`);
         setCurrentVehiclePosition(newPosition);
       }
     }, updateInterval);
     
-    return () => clearInterval(animationTimer);
+    // Store animation ref for cleanup
+    animationRef.current = animationTimer;
+    
+    return () => {
+      console.log("🛑 Cleaning up animation timer");
+      clearInterval(animationTimer);
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
+        animationRef.current = null;
+      }
+    };
   }, [routeCoordinates, currentLocation]);
 
   // Initialize vehicle position when component loads
