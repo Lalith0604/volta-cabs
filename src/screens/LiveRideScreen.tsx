@@ -69,58 +69,84 @@ const LiveRideScreen = () => {
     return (bearing + 360) % 360; // Normalize to 0-360
   };
 
-  // Smoothly animate marker between coordinates using requestAnimationFrame
+  // Realistic vehicle animation along actual route coordinates - Uber/Ola style
   const animateMarkerSmoothly = (
     coordinates: [number, number][],
     onArrive: () => void
   ) => {
-    if (!vehicleMarker.current || coordinates.length < 2) return;
-    let frame: number;
-    let currentIndex = 0;
-    let progress = 0;
-    const duration = 50000; // 50 seconds
-    const totalSegments = coordinates.length - 1;
-    const segmentDuration = duration / totalSegments;
-    let startTime: number | null = null;
-
-    function lerp(a: number, b: number, t: number) {
-      return a + (b - a) * t;
+    if (!vehicleMarker.current || coordinates.length < 2) {
+      console.log('❌ Cannot animate: missing marker or insufficient coordinates');
+      return;
     }
-
-    function animate(ts: number) {
-      if (!startTime) startTime = ts;
-      const elapsed = ts - startTime;
-      currentIndex = Math.floor(elapsed / segmentDuration);
-      progress = (elapsed % segmentDuration) / segmentDuration;
-
-      if (currentIndex >= totalSegments) {
-        // Arrived at destination
+    
+    console.log(`🚗 Starting realistic vehicle movement with ${coordinates.length} route points`);
+    
+    let currentIndex = 0;
+    let animationId: number;
+    let startTime: number | null = null;
+    const totalDuration = 50000; // 50 seconds for realistic timing
+    const totalSegments = coordinates.length - 1;
+    
+    function animate(timestamp: number) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const overallProgress = Math.min(elapsed / totalDuration, 1);
+      
+      // Calculate which segment we should be on
+      const segmentIndex = Math.min(Math.floor(overallProgress * totalSegments), totalSegments - 1);
+      const segmentProgress = (overallProgress * totalSegments) % 1;
+      
+      if (segmentIndex >= totalSegments) {
+        // Animation complete
         vehicleMarker.current!.setLngLat(coordinates[coordinates.length - 1]);
+        setCurrentVehiclePosition(coordinates[coordinates.length - 1]);
+        console.log('🎯 Vehicle arrived at pickup point successfully!');
         onArrive();
         return;
       }
-
-      const [lng1, lat1] = coordinates[currentIndex];
-      const [lng2, lat2] = coordinates[currentIndex + 1];
-      const lng = lerp(lng1, lng2, progress);
-      const lat = lerp(lat1, lat2, progress);
-      vehicleMarker.current!.setLngLat([lng, lat]);
-
-      // Optionally, rotate marker
-      const bearing = calculateBearing([lng1, lat1], [lng2, lat2]);
-      const vehicleEl = vehicleMarker.current!.getElement();
-      if (vehicleEl) {
-        vehicleEl.style.transform = `rotate(${bearing}deg)`;
+      
+      // Get current and next coordinates
+      const currentCoord = coordinates[segmentIndex];
+      const nextCoord = coordinates[segmentIndex + 1];
+      
+      // Linear interpolation for smooth movement
+      const lng = currentCoord[0] + (nextCoord[0] - currentCoord[0]) * segmentProgress;
+      const lat = currentCoord[1] + (nextCoord[1] - currentCoord[1]) * segmentProgress;
+      const interpolatedPosition: [number, number] = [lng, lat];
+      
+      // Update vehicle position
+      vehicleMarker.current!.setLngLat(interpolatedPosition);
+      setCurrentVehiclePosition(interpolatedPosition);
+      
+      // Calculate and apply bearing for realistic vehicle rotation
+      if (segmentIndex !== currentIndex) {
+        const bearing = calculateBearing(currentCoord, nextCoord);
+        const vehicleEl = vehicleMarker.current!.getElement();
+        if (vehicleEl) {
+          vehicleEl.style.transform = `rotate(${bearing}deg)`;
+          vehicleEl.style.transition = 'transform 0.3s ease-out';
+        }
+        currentIndex = segmentIndex;
+        
+        // Log progress every ~10%
+        if (segmentIndex % Math.max(1, Math.floor(totalSegments / 10)) === 0) {
+          console.log(`🚗 Vehicle progress: ${Math.round(overallProgress * 100)}% (Segment ${segmentIndex + 1}/${totalSegments})`);
+        }
       }
-
-      frame = requestAnimationFrame(animate);
+      
+      // Continue animation
+      animationId = requestAnimationFrame(animate);
     }
-
-    frame = requestAnimationFrame(animate);
-
-    // Cleanup function
+    
+    // Start animation
+    animationId = requestAnimationFrame(animate);
+    
+    // Return cleanup function
     return () => {
-      if (frame) cancelAnimationFrame(frame);
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        console.log('🛑 Vehicle animation stopped');
+      }
     };
   };
 
