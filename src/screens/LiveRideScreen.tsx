@@ -87,31 +87,46 @@ const LiveRideScreen = () => {
     }
     
     console.log("🚗 Starting vehicle animation with", routeCoordinates.length, "route coordinates");
+    console.log("📊 Route coordinates:", routeCoordinates.map((coord, i) => `${i}: [${coord[0].toFixed(6)}, ${coord[1].toFixed(6)}]`));
     
-    // Animation duration: 18 seconds
-    const animationDuration = 18000;
-    const updateInterval = 250; // Update every 250ms
+    // Animation duration: 50 seconds for smooth movement
+    const animationDuration = 50000;
+    const totalRoutePoints = routeCoordinates.length;
+    
+    // Calculate update interval based on route complexity
+    const updateInterval = Math.max(50, Math.min(200, animationDuration / (totalRoutePoints * 10))); // 50-200ms range
     const totalSteps = animationDuration / updateInterval;
     let currentStep = 0;
+    
+    console.log(`⚙️ Animation config: ${animationDuration}ms duration, ${updateInterval}ms interval, ${totalSteps} total steps`);
     
     const animationTimer = setInterval(() => {
       currentStep++;
       const progress = currentStep / totalSteps;
       
-      console.log(`🎯 Animation progress: ${(progress * 100).toFixed(1)}% (step ${currentStep}/${totalSteps})`);
+      if (currentStep % 20 === 0 || progress >= 1) { // Log every 20 steps or at completion
+        console.log(`🎯 Animation progress: ${(progress * 100).toFixed(1)}% (step ${currentStep}/${totalSteps})`);
+      }
       
       if (progress >= 1) {
         // Animation complete - driver arrived at pickup
         console.log("✅ Animation complete - driver arrived at pickup");
+        console.log("📍 Final position set to pickup point:", currentLocation.coordinates);
         setCurrentVehiclePosition(currentLocation.coordinates);
         setDriverStatus("Driver has arrived");
         setRideStage('pickup-to-destination');
         setShowStartRide(true);
         clearInterval(animationTimer);
       } else {
-        // Update vehicle position along the route
+        // Update vehicle position along the route with smooth interpolation
         const newPosition = getPositionAlongRoute(routeCoordinates, progress);
-        console.log(`📍 Vehicle position: [${newPosition[0].toFixed(6)}, ${newPosition[1].toFixed(6)}]`);
+        
+        // Enhanced logging for debugging turns
+        const routeIndex = Math.floor(progress * (routeCoordinates.length - 1));
+        if (currentStep % 40 === 0) { // Log position details every 40 steps
+          console.log(`📍 Vehicle at route point ${routeIndex}/${routeCoordinates.length - 1}: [${newPosition[0].toFixed(6)}, ${newPosition[1].toFixed(6)}]`);
+        }
+        
         setCurrentVehiclePosition(newPosition);
       }
     }, updateInterval);
