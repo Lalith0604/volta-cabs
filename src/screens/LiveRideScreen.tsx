@@ -69,59 +69,73 @@ const LiveRideScreen = () => {
     return (bearing + 360) % 360; // Normalize to 0-360
   };
 
-  // Animate vehicle in a straight line from start to end using setInterval
+  // Animate vehicle in straight line over 15 seconds - Uber style
   const animateVehicleStraightLine = (
     start: [number, number],
     end: [number, number],
-    durationMs: number,
     onArrive: () => void
   ) => {
     if (!vehicleMarker.current) return;
-    let startTime = Date.now();
-    const interval = 100; // ms
-    const totalSteps = Math.floor(durationMs / interval);
-    let step = 0;
+    
+    console.log(`🚗 Starting vehicle animation from [${start[0].toFixed(6)}, ${start[1].toFixed(6)}] to [${end[0].toFixed(6)}, ${end[1].toFixed(6)}]`);
+    
+    const duration = 15000; // 15 seconds
+    const interval = 100; // Update every 100ms for smooth animation
+    const totalSteps = duration / interval;
+    let currentStep = 0;
 
-    // Calculate bearing once
+    // Calculate bearing for vehicle rotation
     const bearing = calculateBearing(start, end);
 
-    // Animation interval
+    // Animation using setInterval
     animationRef.current = setInterval(() => {
-      step++;
-      const t = Math.min(step / totalSteps, 1); // progress 0..1
-      // Linear interpolation
-      const lng = start[0] + (end[0] - start[0]) * t;
-      const lat = start[1] + (end[1] - start[1]) * t;
+      currentStep++;
+      const progress = Math.min(currentStep / totalSteps, 1);
+      
+      // Linear interpolation between start and end
+      const lng = start[0] + (end[0] - start[0]) * progress;
+      const lat = start[1] + (end[1] - start[1]) * progress;
       const position: [number, number] = [lng, lat];
 
-      // Move marker
+      // Update vehicle marker position
       vehicleMarker.current!.setLngLat(position);
+      setCurrentVehiclePosition(position);
 
-      // Rotate marker to face direction
+      // Rotate vehicle to face direction
       const vehicleEl = vehicleMarker.current!.getElement();
       if (vehicleEl) {
         vehicleEl.style.transform = `rotate(${bearing}deg)`;
+        vehicleEl.style.transition = 'transform 0.2s ease-out';
       }
 
-      // Move camera to follow vehicle
+      // Follow vehicle with camera
       if (map.current) {
         map.current.easeTo({
           center: position,
           duration: interval,
-          easing: n => n, // linear
+          easing: (t) => t // Linear easing
         });
       }
 
-      // End animation
-      if (t >= 1) {
+      // Log progress every 20%
+      if (currentStep % Math.floor(totalSteps / 5) === 0) {
+        console.log(`🚗 Animation progress: ${Math.round(progress * 100)}%`);
+      }
+
+      // Animation complete
+      if (progress >= 1) {
         clearInterval(animationRef.current!);
+        console.log('🎯 Vehicle arrived at destination!');
         onArrive();
       }
     }, interval);
 
-    // Cleanup
+    // Return cleanup function
     return () => {
-      if (animationRef.current) clearInterval(animationRef.current);
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
+        console.log('🛑 Animation stopped');
+      }
     };
   };
 
@@ -433,7 +447,6 @@ const LiveRideScreen = () => {
       const cleanup = animateVehicleStraightLine(
         currentVehiclePosition,
         currentLocation.coordinates,
-        50000, // 50 seconds
         () => {
           setDriverStatus("Driver has arrived");
           setRideStage("pickup-to-destination");
@@ -446,25 +459,27 @@ const LiveRideScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rideStage, currentVehiclePosition, currentLocation, animationStarted]);
 
-  // Effect to animate vehicle along route for pickup-to-destination (if needed)
+  // Effect to animate vehicle from pickup to destination (straight line - 15 seconds)
   useEffect(() => {
     if (
       rideStage === "pickup-to-destination" &&
-      routeCoordinates.length > 0 &&
+      currentLocation &&
+      destination &&
       !animationStarted
     ) {
       setAnimationStarted(true);
-      let cleanup: (() => void) | undefined;
-      cleanup = animateMarkerSmoothly(routeCoordinates, () => {
-        setDriverStatus("Arrived at destination");
-        setAnimationStarted(false);
-      });
-      return () => {
-        if (cleanup) cleanup();
-      };
+      const cleanup = animateVehicleStraightLine(
+        currentLocation.coordinates,
+        destination.coordinates,
+        () => {
+          setDriverStatus("Arrived at destination");
+          setAnimationStarted(false);
+        }
+      );
+      return cleanup;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rideStage, routeCoordinates, animationStarted]);
+  }, [rideStage, currentLocation, destination, animationStarted]);
 
   useEffect(() => {
     return () => {
