@@ -18,15 +18,12 @@ const LiveRideScreen = () => {
   const routerLocation = useRouterLocation();
   const { currentLocation, destination } = useLocation();
 
-  // Test console log to confirm navigation worked
-  console.log("✅ Successfully navigated to LiveRideScreen!");
-  console.log("Ride data received:", routerLocation.state);
+  // Map and marker refs
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const vehicleMarker = useRef<mapboxgl.Marker | null>(null);
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
-  
   
   // Get ride details from navigation state
   const rideDetails = routerLocation.state?.rideDetails || {
@@ -35,15 +32,14 @@ const LiveRideScreen = () => {
     price: "₹81.84",
   };
   
-  // States for driver animation and start ride
+  // Animation states
   const [showStartRide, setShowStartRide] = useState(false);
   const [driverStatus, setDriverStatus] = useState("Driver on the way");
   const [currentVehiclePosition, setCurrentVehiclePosition] = useState<[number, number] | null>(null);
   const [rideStage, setRideStage] = useState<'driver-to-pickup' | 'pickup-to-destination'>('driver-to-pickup');
-  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
   const [animationStarted, setAnimationStarted] = useState(false);
   
-  // Generate simulated driver starting position (about 1000m away)
+  // Utility: Generate simulated driver starting position (about 1000m away)
   const getSimulatedDriverPosition = (pickupLocation: [number, number]): [number, number] => {
     const offsetLat = 0.009; // approximately 1000m in latitude
     const offsetLng = 0.012; // approximately 1000m in longitude
@@ -53,7 +49,7 @@ const LiveRideScreen = () => {
     ];
   };
   
-  // Calculate bearing between two coordinates for vehicle rotation
+  // Utility: Calculate bearing between two coordinates for vehicle rotation
   const calculateBearing = (start: [number, number], end: [number, number]): number => {
     const [startLng, startLat] = start;
     const [endLng, endLat] = end;
@@ -69,8 +65,8 @@ const LiveRideScreen = () => {
     return (bearing + 360) % 360; // Normalize to 0-360
   };
 
-  // Animate vehicle in straight line over 15 seconds - Uber style
-  const animateVehicleStraightLine = (
+  // Core Animation: Vehicle movement with 15-second duration
+  const animateVehicle = (
     start: [number, number],
     end: [number, number],
     onArrive: () => void
@@ -139,125 +135,7 @@ const LiveRideScreen = () => {
     };
   };
 
-  // Realistic vehicle animation along actual route coordinates - Uber/Ola style
-  const animateMarkerSmoothly = (
-    coordinates: [number, number][],
-    onArrive: () => void
-  ) => {
-    if (!vehicleMarker.current || coordinates.length < 2) {
-      console.log('❌ Cannot animate: missing marker or insufficient coordinates');
-      return;
-    }
-    
-    console.log(`🚗 Starting realistic vehicle movement with ${coordinates.length} route points`);
-    
-    let currentIndex = 0;
-    let animationId: number;
-    let startTime: number | null = null;
-    const totalDuration = 50000; // 50 seconds for realistic timing
-    const totalSegments = coordinates.length - 1;
-    
-    function animate(timestamp: number) {
-      if (!startTime) startTime = timestamp;
-      const elapsed = timestamp - startTime;
-      const overallProgress = Math.min(elapsed / totalDuration, 1);
-      
-      // Calculate which segment we should be on
-      const segmentIndex = Math.min(Math.floor(overallProgress * totalSegments), totalSegments - 1);
-      const segmentProgress = (overallProgress * totalSegments) % 1;
-      
-      if (segmentIndex >= totalSegments) {
-        // Animation complete
-        vehicleMarker.current!.setLngLat(coordinates[coordinates.length - 1]);
-        setCurrentVehiclePosition(coordinates[coordinates.length - 1]);
-        console.log('🎯 Vehicle arrived at pickup point successfully!');
-        onArrive();
-        return;
-      }
-      
-      // Get current and next coordinates
-      const currentCoord = coordinates[segmentIndex];
-      const nextCoord = coordinates[segmentIndex + 1];
-      
-      // Linear interpolation for smooth movement
-      const lng = currentCoord[0] + (nextCoord[0] - currentCoord[0]) * segmentProgress;
-      const lat = currentCoord[1] + (nextCoord[1] - currentCoord[1]) * segmentProgress;
-      const interpolatedPosition: [number, number] = [lng, lat];
-      
-      // Update vehicle position
-      vehicleMarker.current!.setLngLat(interpolatedPosition);
-      setCurrentVehiclePosition(interpolatedPosition);
-      
-      // Calculate and apply bearing for realistic vehicle rotation
-      if (segmentIndex !== currentIndex) {
-        const bearing = calculateBearing(currentCoord, nextCoord);
-        const vehicleEl = vehicleMarker.current!.getElement();
-        if (vehicleEl) {
-          vehicleEl.style.transform = `rotate(${bearing}deg)`;
-          vehicleEl.style.transition = 'transform 0.3s ease-out';
-        }
-        currentIndex = segmentIndex;
-        
-        // Log progress every ~10%
-        if (segmentIndex % Math.max(1, Math.floor(totalSegments / 10)) === 0) {
-          console.log(`🚗 Vehicle progress: ${Math.round(overallProgress * 100)}% (Segment ${segmentIndex + 1}/${totalSegments})`);
-        }
-      }
-      
-      // Continue animation
-      animationId = requestAnimationFrame(animate);
-    }
-    
-    // Start animation
-    animationId = requestAnimationFrame(animate);
-    
-    // Return cleanup function
-    return () => {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-        console.log('🛑 Vehicle animation stopped');
-      }
-    };
-  };
-
-  // Initialize vehicle position when component loads
-  useEffect(() => {
-    if (!currentLocation) return;
-    const driverStartPosition = getSimulatedDriverPosition(currentLocation.coordinates);
-    setCurrentVehiclePosition(driverStartPosition);
-  }, [currentLocation]);
-
-  useEffect(() => {
-    if (currentLocation && destination) {
-      initializeMap();
-    }
-  }, [currentLocation, destination, rideStage]);
-
-  // Effect to update map when stage changes
-  useEffect(() => {
-    if (map.current && rideStage === 'pickup-to-destination') {
-      // Add destination marker when stage changes
-      if (destination && !destinationMarker.current) {
-        const destinationEl = document.createElement('div');
-        destinationEl.innerHTML = '🎯';
-        destinationEl.style.fontSize = '20px';
-        destinationEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))';
-        
-        const destinationPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-          '<div style="padding: 8px; font-weight: bold; color: #ef4444;">🎯 Destination</div>'
-        );
-        
-        destinationMarker.current = new mapboxgl.Marker({ element: destinationEl })
-          .setLngLat(destination.coordinates)
-          .setPopup(destinationPopup)
-          .addTo(map.current!);
-      }
-      
-      // Update route to show pickup to destination
-      fetchAndDrawPickupToDestinationRoute();
-    }
-  }, [rideStage, destination]);
-
+  // Route Management: Fetch and draw route from driver to pickup (black line)
   const fetchAndDrawDriverToPickupRoute = async () => {
     if (!map.current || !currentLocation || !currentVehiclePosition) return;
 
@@ -272,16 +150,13 @@ const LiveRideScreen = () => {
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         
-        // Store route coordinates for animation
-        const coordinates: [number, number][] = route.geometry.coordinates;
-        setRouteCoordinates(coordinates);
-        
-        // Add route source
+        // Remove existing route if present
         if (map.current.getSource('route')) {
           map.current.removeLayer('route');
           map.current.removeSource('route');
         }
         
+        // Add route source and layer (black for driver to pickup)
         map.current.addSource('route', {
           type: 'geojson',
           data: {
@@ -291,7 +166,6 @@ const LiveRideScreen = () => {
           }
         });
         
-        // Add route layer (black for driver to pickup)
         map.current.addLayer({
           id: 'route',
           type: 'line',
@@ -312,6 +186,7 @@ const LiveRideScreen = () => {
     }
   };
 
+  // Route Management: Fetch and draw route from pickup to destination (blue line)
   const fetchAndDrawPickupToDestinationRoute = async () => {
     if (!map.current || !currentLocation || !destination) return;
 
@@ -325,12 +200,13 @@ const LiveRideScreen = () => {
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         
-        // Add route source
+        // Remove existing route if present
         if (map.current.getSource('route')) {
           map.current.removeLayer('route');
           map.current.removeSource('route');
         }
         
+        // Add route source and layer (blue for pickup to destination)
         map.current.addSource('route', {
           type: 'geojson',
           data: {
@@ -340,7 +216,6 @@ const LiveRideScreen = () => {
           }
         });
         
-        // Add route layer (blue for pickup to destination)
         map.current.addLayer({
           id: 'route',
           type: 'line',
@@ -361,6 +236,7 @@ const LiveRideScreen = () => {
     }
   };
 
+  // Map Initialization
   const initializeMap = () => {
     if (!mapContainer.current || !currentLocation || !destination) return;
 
@@ -420,7 +296,6 @@ const LiveRideScreen = () => {
 
       // Fetch and draw appropriate route based on stage
       if (rideStage === 'driver-to-pickup') {
-        // Draw route from vehicle current position to pickup
         fetchAndDrawDriverToPickupRoute();
       } else {
         fetchAndDrawPickupToDestinationRoute();
@@ -428,14 +303,46 @@ const LiveRideScreen = () => {
     });
   };
 
-  // Update vehicle marker position when currentVehiclePosition changes
+  // Initialize vehicle position when component loads
   useEffect(() => {
-    if (vehicleMarker.current && currentVehiclePosition) {
-      vehicleMarker.current.setLngLat(currentVehiclePosition);
-    }
-  }, [currentVehiclePosition]);
+    if (!currentLocation) return;
+    const driverStartPosition = getSimulatedDriverPosition(currentLocation.coordinates);
+    setCurrentVehiclePosition(driverStartPosition);
+  }, [currentLocation]);
 
-  // Effect to animate vehicle in a straight line from driver to pickup
+  // Initialize map when locations are available
+  useEffect(() => {
+    if (currentLocation && destination) {
+      initializeMap();
+    }
+  }, [currentLocation, destination, rideStage]);
+
+  // Handle stage change: Add destination marker and update route
+  useEffect(() => {
+    if (map.current && rideStage === 'pickup-to-destination') {
+      // Add destination marker when stage changes
+      if (destination && !destinationMarker.current) {
+        const destinationEl = document.createElement('div');
+        destinationEl.innerHTML = '🎯';
+        destinationEl.style.fontSize = '20px';
+        destinationEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))';
+        
+        const destinationPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+          '<div style="padding: 8px; font-weight: bold; color: #ef4444;">🎯 Destination</div>'
+        );
+        
+        destinationMarker.current = new mapboxgl.Marker({ element: destinationEl })
+          .setLngLat(destination.coordinates)
+          .setPopup(destinationPopup)
+          .addTo(map.current!);
+      }
+      
+      // Update route to show pickup to destination
+      fetchAndDrawPickupToDestinationRoute();
+    }
+  }, [rideStage, destination]);
+
+  // Animation Phase 1: Driver to pickup point
   useEffect(() => {
     if (
       rideStage === "driver-to-pickup" &&
@@ -444,7 +351,7 @@ const LiveRideScreen = () => {
       !animationStarted
     ) {
       setAnimationStarted(true);
-      const cleanup = animateVehicleStraightLine(
+      const cleanup = animateVehicle(
         currentVehiclePosition,
         currentLocation.coordinates,
         () => {
@@ -459,7 +366,7 @@ const LiveRideScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rideStage, currentVehiclePosition, currentLocation, animationStarted]);
 
-  // Effect to animate vehicle from pickup to destination (straight line - 15 seconds)
+  // Animation Phase 2: Pickup to destination
   useEffect(() => {
     if (
       rideStage === "pickup-to-destination" &&
@@ -468,7 +375,7 @@ const LiveRideScreen = () => {
       !animationStarted
     ) {
       setAnimationStarted(true);
-      const cleanup = animateVehicleStraightLine(
+      const cleanup = animateVehicle(
         currentLocation.coordinates,
         destination.coordinates,
         () => {
@@ -481,6 +388,7 @@ const LiveRideScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rideStage, currentLocation, destination, animationStarted]);
 
+  // Cleanup animation on unmount
   useEffect(() => {
     return () => {
       if (animationRef.current) {
