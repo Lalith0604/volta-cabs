@@ -69,7 +69,6 @@ const LiveRideScreen = () => {
     return (bearing + 360) % 360; // Normalize to 0-360
   };
 
-<<<<<<< HEAD
   // Animate vehicle in a straight line from start to end using setInterval
   const animateVehicleStraightLine = (
     start: [number, number],
@@ -126,11 +125,7 @@ const LiveRideScreen = () => {
     };
   };
 
-  // Smoothly animate marker between coordinates using requestAnimationFrame
-  // (This is now only used for the pickup-to-destination stage, not for driver-to-pickup)
-=======
   // Realistic vehicle animation along actual route coordinates - Uber/Ola style
->>>>>>> c3f3815cb75929bcd0179bba1a05116a3c4a8992
   const animateMarkerSmoothly = (
     coordinates: [number, number][],
     onArrive: () => void
